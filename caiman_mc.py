@@ -4,6 +4,7 @@ experiment_date = '2019-08-27' #@param {type: "string"}
 animal_name = 'E-BL'  #@param {type: "string"}
 
 """# Install and import dependencies"""
+import miniscope_file
 
 from datetime import datetime
 import scipy.io as sio
@@ -35,54 +36,18 @@ import peakutils
 import os
 import subprocess
 
-copy_src_files = True
-downsample = True
-motion_correct = True
 
-
-local_miniscope_path = '/'.join(['/mnt/DATA/Prez/cheeseboard-results/', experiment_month, experiment_title, experiment_date])
-src_miniscope_path = '/'.join(['/mnt/DATA/Prez/cheeseboard/', experiment_month, experiment_title, experiment_date])
-session_vids = dict()
-session_local_dir = dict()
-vid_fpaths = []
-for exp_subdir in os.listdir(src_miniscope_path):
-  if exp_subdir == 'caiman':
-    continue
-  local_session_path = '/'.join([local_miniscope_path, exp_subdir, animal_name])
-  sessions_path = '/'.join([src_miniscope_path, exp_subdir, 'mv_caimg', animal_name])
-
-  target_dir = local_miniscope_path + '/' + exp_subdir
-  if copy_src_files or (not os.path.exists(target_dir)):
-    print('Copying session ' + sessions_path + ' to ' + target_dir)
-    subprocess.run(['mkdir', '-p', local_session_path])
-    subprocess.run(['cp', '-r', sessions_path, target_dir])
-
-  # create a list of vids to process
-  sessions_list = [s for s in os.listdir(sessions_path) if s.startswith('Session')]
-  sessions_list = sorted(sessions_list, key=lambda x: int(re.sub('[Session]','', x)))
-  for session_subdir in sessions_list:
-    timestamped_dir = os.listdir(sessions_path + '/' + session_subdir)[0]
-    timestamped_path = '/'.join([sessions_path, session_subdir, timestamped_dir])
-
-    msFileList = [f for f in os.listdir(timestamped_path) if f.startswith('ms')]
-    msFileList = sorted(msFileList, key=lambda x: int(re.sub('[msCam.avi]','', x)))
-    exp_id = '_'.join([exp_subdir, animal_name, session_subdir, timestamped_dir])
-    local_vids_parentdir = '/'.join([local_session_path, session_subdir, timestamped_dir])
-    session_vids[exp_id] = [local_vids_parentdir + '/' + fname for fname in msFileList]
-    session_local_dir[exp_id] = local_vids_parentdir
-    vid_fpaths = vid_fpaths + session_vids[exp_id]
-
-result_data_dir = local_miniscope_path + '/caiman/' + animal_name + '/'
-subprocess.run(['mkdir', '-p', result_data_dir])
-#vid_fpaths=vid_fpaths[1:2]
-
-
-print(session_vids)
+spatial_downsampling = 2
+local_miniscope_path = '/'.join([
+    '/mnt/DATA/Prez/cheeseboard-down/down_' + str(spatial_downsampling),
+    experiment_month,
+    experiment_title,
+    experiment_date])
+session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
 
 """# Setup cnmf parameters"""
 
 analyze_behavior = False
-spatial_downsampling = 2 # Drastically speeds up processing. 2-3 recommended
 isnonrigid = False
 
 now = datetime.now()
@@ -90,15 +55,6 @@ analysis_time = now.strftime("%Y-%m-%d %H:%M") # This is to register when the an
 print('Analysis started on ' + analysis_time)
 
 analysis_start = time.time() # This is to register the time spent analyzing
-
-
-"""# Downsample the videos"""
-if downsample:
-  for video in vid_fpaths:
-    clip = VideoFileClip(video)
-    resized_clip = clip.resize(1/spatial_downsampling)
-    os.remove(video)
-    resized_clip.write_videofile(video,codec='rawvideo')
 
 #%% start a cluster for parallel processing (if a cluster already exists it will be closed and a new session will be opened)
 if 'dview' in locals():
@@ -115,7 +71,7 @@ frate = 20                       # movie frame rate
 decay_time = 0.4                 # length of a typical transient in seconds
 
 # motion correction parameters
-pw_rigid = True         # flag for performing piecewise-rigid motion correction (otherwise just rigid)
+pw_rigid = False         # flag for performing piecewise-rigid motion correction (otherwise just rigid)
 gSig_filt = (3, 3)       # size of high pass spatial filtering, used in 1p data
 max_shifts = (5, 5)      # maximum allowed rigid shift
 strides = (48, 48)       # start a new patch for pw-rigid motion correction every x pixels
@@ -151,11 +107,17 @@ opts = params.CNMFParams(params_dict=mc_dict)
 """# Perform motion correction (might take a while)"""
 
 start = time.time() # This is to keep track of how long the analysis is running
-if motion_correct:
+mc_template = None
+mc_fnames = []
+for s_fpath in session_fpaths:
+    vids_fpath = miniscope_file.list_vidfiles(s_fpath)
     # do motion correction rigid
-    mc = MotionCorrect(vid_fpaths, dview=dview, **opts.get_group('motion'))
+    mc = MotionCorrect(vids_fpath, dview=dview, template=mc_template, **opts.get_group('motion'))
     mc.motion_correct(save_movie=True)
     fname_mc = mc.fname_tot_els if pw_rigid else mc.fname_tot_rig
+    mc_fnames.append(fname_mc)
+    if mc_template is None:
+        mc_template = fname_mc
 
 end = time.time()
 
@@ -166,7 +128,7 @@ print('Motion correction has been done!')
 
 # Commented out IPython magic to ensure Python compatibility.
 # %matplotlib inline
-if motion_correct and not pw_rigid:
+if not pw_rigid:
   plt.figure(figsize=(10,20))
   plt.subplot(2, 1, 1); plt.imshow(mc.total_template_rig);  # % plot template
   plt.subplot(2, 1, 2); plt.plot(mc.shifts_rig)  # % plot rigid shifts
@@ -177,20 +139,15 @@ if motion_correct and not pw_rigid:
 
 """# Map the motion corrected video to memory"""
 
-if motion_correct:
-    if pw_rigid:
-        bord_px = np.ceil(np.maximum(np.max(np.abs(mc.x_shifts_els)),
-                                     np.max(np.abs(mc.y_shifts_els)))).astype(np.int)
-    else:
-        bord_px = np.ceil(np.max(np.abs(mc.shifts_rig))).astype(np.int)
+if pw_rigid:
+    bord_px = np.ceil(np.maximum(np.max(np.abs(mc.x_shifts_els)),
+                                    np.max(np.abs(mc.y_shifts_els)))).astype(np.int)
+else:
+    bord_px = np.ceil(np.max(np.abs(mc.shifts_rig))).astype(np.int)
 
-    bord_px = 0 if border_nan is 'copy' else bord_px
-    fname_new = cm.save_memmap(fname_mc, base_name='memmap_', order='C',
-                               border_to_0=bord_px)
-
-else:  # if no motion correction just memory map the file
-    fname_new = cm.save_memmap(vid_fpaths, base_name='memmap_',
-                               order='C', border_to_0=0, dview=dview)
+bord_px = 0 if border_nan is 'copy' else bord_px
+fname_new = cm.save_memmap(fname_mc, base_name='memmap_', order='C',
+                            border_to_0=bord_px)
 
 print('Motion corrected video has been mapped to memory')
 
@@ -200,8 +157,8 @@ Yr, dims, T = cm.load_memmap(fname_new)
 images = Yr.T.reshape((T,) + dims, order='F')
 
 # Write motion corrected video to drive
-w = cm.movie(images)
-w.save(result_data_dir + '/mc.tif')
+#w = cm.movie(images)
+#w.save(result_data_dir + '/mc.tif')
 
 # using skvideo
 #import skvideo.io
