@@ -4,15 +4,19 @@ import os
 from moviepy.editor import VideoFileClip
 
 
-experiment_month = '2019-08'
-experiment_title = 'habituation'
-experiment_date = '2019-08-27' #@param {type: "string"}
-animal_name = 'E-BL'  #@param {type: "string"}
-spatial_downsampling = 2 #@param {type: int}
-down_size = (752 / spatial_downsampling, 480 / spatial_downsampling)
+experiment_month = os.environ['EXP_MONTH']
+experiment_title = os.environ['EXP_TITLE']
+experiment_date = os.environ['EXP_DATE']
+animal_name = os.environ['ANIMAL']
+spatial_downsampling = int(os.environ['DOWNSAMPLE'])
+downsample_subpath = os.environ['DOWNSAMPLE_SUBPATH']
+local_rootdir = os.environ['LOCAL_ROOTDIR']
+
+down_size = [752 / spatial_downsampling, 480 / spatial_downsampling]
 
 local_miniscope_path = '/'.join([
-    '/mnt/DATA/Prez/cheeseboard-down/down_' + str(spatial_downsampling),
+    local_rootdir,
+    downsample_subpath,
     experiment_month,
     experiment_title,
     experiment_date])
