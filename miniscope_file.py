@@ -19,10 +19,10 @@ def list_session_dirs(src_miniscope_path, animal_name):
 
 
 def list_vidfiles(session_fpath):
-    timestamped_dir = os.listdir(session_fpath)[0]
+    timestamped_dir = [f for f in os.listdir(session_fpath) if f.startswith('H')][0]
     timestamped_path = '/'.join([session_fpath, timestamped_dir])
 
-    msFileList = [f for f in os.listdir(timestamped_path) if f.startswith('ms')]
+    msFileList = [f for f in os.listdir(timestamped_path) if f.startswith('msCam') and f.endswith('.avi')]
     msFileList = sorted(msFileList, key=lambda x: int(re.sub('[msCam.avi]', '', x)))
     vid_fpaths = [timestamped_path + '/' + fname for fname in msFileList]
 

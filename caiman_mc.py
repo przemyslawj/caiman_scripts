@@ -1,45 +1,36 @@
-experiment_month = '2019-08'
-experiment_title = 'habituation'
-experiment_date = '2019-08-27' #@param {type: "string"}
-animal_name = 'E-BL'  #@param {type: "string"}
-
 """# Install and import dependencies"""
 import miniscope_file
 
 from datetime import datetime
 import scipy.io as sio
-import re
+
 import os
-import h5py
-import csv
-import tensorflow as tf
 import time
-import logging
-import zipfile
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 mpl.style.use('default')
 import numpy as np
-from moviepy.editor import *
-import smtplib
-
-
-import caiman as cm
-from caiman.source_extraction import cnmf
-from caiman.utils.visualization import inspect_correlation_pnr
-from caiman.motion_correction import MotionCorrect
-from caiman.source_extraction.cnmf import params as params
-import peakutils
-
-"""# Prepare data"""
-
-import os
 import subprocess
 
+import caiman as cm
+from caiman.motion_correction import MotionCorrect
+from caiman.source_extraction.cnmf import params as params
 
-spatial_downsampling = 2
+writeAvi = True
+
+"""# Prepare data"""
+#execfile('vars_setup.sh')
+experiment_month = os.environ['EXP_MONTH']
+experiment_title = os.environ['EXP_TITLE']
+experiment_date = os.environ['EXP_DATE']
+animal_name = os.environ['ANIMAL']
+spatial_downsampling = int(os.environ['DOWNSAMPLE'])
+downsample_subpath = os.environ['DOWNSAMPLE_SUBPATH']
+local_rootdir = os.environ['LOCAL_ROOTDIR']
+
 local_miniscope_path = '/'.join([
-    '/mnt/DATA/Prez/cheeseboard-down/down_' + str(spatial_downsampling),
+    local_rootdir,
+    downsample_subpath,
     experiment_month,
     experiment_title,
     experiment_date])
@@ -57,8 +48,8 @@ print('Analysis started on ' + analysis_time)
 analysis_start = time.time() # This is to register the time spent analyzing
 
 #%% start a cluster for parallel processing (if a cluster already exists it will be closed and a new session will be opened)
-if 'dview' in locals():
-    cm.stop_server(dview=dview)
+#if 'dview' in locals():
+#    cm.stop_server(dview=dview)
 c, dview, n_processes = cm.cluster.setup_cluster(
     backend='local', n_processes=None, single_thread=False)
 
@@ -105,70 +96,74 @@ mc_dict = {
 opts = params.CNMFParams(params_dict=mc_dict)
 
 """# Perform motion correction (might take a while)"""
+def plot_stats(session_fpath, mc):
+    # Plot the motion corrected template and associated shifts
+    result_data_dir = s_fpath + '/' + 'caiman'
+    subprocess.call(['mkdir', '-p', result_data_dir])
+    plt.figure(figsize=(10,20))
+    plt.subplot(2, 1, 1); plt.imshow(mc.total_template_rig);  # % plot template
+    plt.subplot(2, 1, 2); plt.plot(mc.shifts_rig)  # % plot rigid shifts
+    plt.legend(['x shifts', 'y shifts'])
+    plt.xlabel('frames')
+    plt.ylabel('pixels')
+    plt.savefig(result_data_dir + '/' + 'mc_summary_figure.svg', edgecolor='w', format='svg', transparent=True)
 
 start = time.time() # This is to keep track of how long the analysis is running
 mc_template = None
 mc_fnames = []
+max_bord_px = 0
 for s_fpath in session_fpaths:
     vids_fpath = miniscope_file.list_vidfiles(s_fpath)
+    print('Aligning session vids:' + str(vids_fpath))
     # do motion correction rigid
-    mc = MotionCorrect(vids_fpath, dview=dview, template=mc_template, **opts.get_group('motion'))
-    mc.motion_correct(save_movie=True)
+    mc = MotionCorrect(vids_fpath, dview=dview, **opts.get_group('motion'))
+    mc.motion_correct(save_movie=True, template=mc_template)
     fname_mc = mc.fname_tot_els if pw_rigid else mc.fname_tot_rig
-    mc_fnames.append(fname_mc)
+    mc_fnames = mc_fnames + fname_mc
     if mc_template is None:
-        mc_template = fname_mc
+        mc_template = mc.total_template_rig
+    if not pw_rigid:
+        plot_stats(s_fpath, mc)
 
-end = time.time()
+    end = time.time()
+    print('Motion correction done in ' + str(end - start))
 
-print(end - start)
-print('Motion correction has been done!')
 
-"""# Plot the motion corrected template and associated shifts"""
+    """# Map the motion corrected video to memory"""
 
-# Commented out IPython magic to ensure Python compatibility.
-# %matplotlib inline
-if not pw_rigid:
-  plt.figure(figsize=(10,20))
-  plt.subplot(2, 1, 1); plt.imshow(mc.total_template_rig);  # % plot template
-  plt.subplot(2, 1, 2); plt.plot(mc.shifts_rig)  # % plot rigid shifts
-  plt.legend(['x shifts', 'y shifts'])
-  plt.xlabel('frames')
-  plt.ylabel('pixels')
-  plt.savefig(result_data_dir + '/' + 'mc_summary_figure.svg', edgecolor='w', format='svg', transparent=True)
+    if pw_rigid:
+        bord_px = np.ceil(np.maximum(np.max(np.abs(mc.x_shifts_els)),
+                                        np.max(np.abs(mc.y_shifts_els)))).astype(np.int)
+    else:
+        bord_px = np.ceil(np.max(np.abs(mc.shifts_rig))).astype(np.int)
 
-"""# Map the motion corrected video to memory"""
+    bord_px = 0 if border_nan is 'copy' else bord_px
+    max_bord_px = max(max_bord_px, bord_px)
 
-if pw_rigid:
-    bord_px = np.ceil(np.maximum(np.max(np.abs(mc.x_shifts_els)),
-                                    np.max(np.abs(mc.y_shifts_els)))).astype(np.int)
-else:
-    bord_px = np.ceil(np.max(np.abs(mc.shifts_rig))).astype(np.int)
+fname_new = cm.save_memmap(mc_fnames, base_name='memmap_', order='C',
+                            border_to_0=max_bord_px)
+print('Motion corrected videos has been mapped to single memory file')
 
-bord_px = 0 if border_nan is 'copy' else bord_px
-fname_new = cm.save_memmap(fname_mc, base_name='memmap_', order='C',
-                            border_to_0=bord_px)
+subprocess.call(['mkdir', '-p', '/'.join([local_miniscope_path, 'caiman'])])
+output_file = '/'.join([local_miniscope_path, 'caiman', os.path.basename(fname_new)])
+subprocess.call(['mv', fname_new, output_file])
 
-print('Motion corrected video has been mapped to memory')
 
-# load memory mappable file
-print('New mappable file: ' + fname_new)
-Yr, dims, T = cm.load_memmap(fname_new)
-images = Yr.T.reshape((T,) + dims, order='F')
+if writeAvi:
+    # load memory mappable file
+    Yr, dims, T = cm.load_memmap(output_file)
+    images = Yr.T.reshape((T,) + dims, order='F')
 
-# Write motion corrected video to drive
-#w = cm.movie(images)
-#w.save(result_data_dir + '/mc.tif')
+    # Write motion corrected video to drive
+    w = cm.movie(images)
+    # using skvideo
+    import skvideo.io
+    mcwriter = skvideo.io.FFmpegWriter('/'.join([local_miniscope_path, 'caiman', 'mc.avi']), outputdict={
+      '-c:v': 'copy'})
+    #mcwriter = skvideo.io.FFmpegWriter(result_data_dir + '/mc.avi')
+    for iddxx, frame in enumerate(w):
+      mcwriter.writeFrame(frame.astype('uint8'))
+    mcwriter.close()
 
-# using skvideo
-#import skvideo.io
-#mcwriter = skvideo.io.FFmpegWriter(result_data_dir + '/mc.mp4', outputdict={
-#  '-c:v': 'copy'})
-#mcwriter = skvideo.io.FFmpegWriter(result_data_dir + '/mc.avi')
-#
-#for iddxx, frame in enumerate(w):
-#  mcwriter.writeFrame(frame.astype('uint8'))
-
-#mcwriter.close()
 cm.stop_server(dview=dview)
 
