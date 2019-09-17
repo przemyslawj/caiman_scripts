@@ -1,53 +1,45 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+import miniscope_file
 
-
-from datetime import datetime
 import scipy.io as sio
-import re
 import os
-import h5py
-import csv
-import tensorflow as tf
 import time
-import logging
-import zipfile
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 mpl.style.use('default')
 import numpy as np
-from moviepy.editor import *
-import smtplib
+import pandas as pd
 
 import caiman as cm
 from caiman.source_extraction import cnmf
-from caiman.utils.visualization import inspect_correlation_pnr
-from caiman.motion_correction import MotionCorrect
 from caiman.source_extraction.cnmf import params as params
-import peakutils
+
+experiment_month = os.environ['EXP_MONTH']
+experiment_title = os.environ['EXP_TITLE']
+experiment_date = os.environ['EXP_DATE']
+animal_name = os.environ['ANIMAL']
+spatial_downsampling = int(os.environ['DOWNSAMPLE'])
+downsample_subpath = os.environ['DOWNSAMPLE_SUBPATH']
+local_rootdir = os.environ['LOCAL_ROOTDIR']
+
+local_miniscope_path = '/'.join([
+    local_rootdir,
+    downsample_subpath,
+    experiment_month,
+    experiment_title,
+    experiment_date])
+session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
 
 """# Prepare data"""
-
-import os
-import subprocess
-
-
-# In[2]:
-
-
-#%% restart cluster to clean up memory
 c, dview, n_processes = cm.cluster.setup_cluster(
     backend='local', n_processes=None, single_thread=False, ignore_preexisting=True)
 
 
 # ## Load Motion Corrected data
-
-# In[3]:
-
-
-result_data_dir = '/home/prez/data/2019-08/habituation/2019-08-27/caiman/E-BL/'
+result_data_dir = '/'.join([local_miniscope_path, 'caiman', animal_name])
+pd.read_csv(result_data_dir + '/session_info.csv')
 
 load_mmap = True
 if not load_mmap:
@@ -55,15 +47,11 @@ if not load_mmap:
     fname_new = cm.save_memmap([mc_fpath], base_name='memmap_',
                                 order='C', border_to_0=0, dview=dview)
 else:
-    fname_new = '/home/prez/data//2019-08/habituation/2019-08-27/trial/E-BL/Session1/H13_M13_S44/memmap__d1_240_d2_376_d3_1_order_C_frames_55101_.mmap'
+    fname_new = [f for f in os.listdir(result_data_dir) if f.endswith('mmap')][0]
 
 # load memory mappable file
 Yr, dims, T = cm.load_memmap(fname_new)
 images = Yr.T.reshape((T,) + dims, order='F')
-
-
-# In[4]:
-
 
 # Compute some summary images (correlation and peak to noise) while downsampling temporally 5x to speedup the process and avoid memory overflow
 cn_filter, pnr = cm.summary_images.correlation_pnr(images[::5], gSig=3, swap_dim=False) # change swap dim if output looks weird, it is a problem with tiffile
@@ -78,7 +66,6 @@ plt.savefig(result_data_dir + '/' + 'pnr.svg', edgecolor='w', format='svg', tran
 # ## Run CNMFE
 
 # In[10]:
-
 
 frate = 20
 opts_dict = {
@@ -126,13 +113,13 @@ opts = params.CNMFParams(params_dict=opts_dict)
 # In[11]:
 
 
-start = time.time()
+analysis_start = time.time()
 # Perform CNMF
 cnm = cnmf.CNMF(n_processes=n_processes, dview=dview, Ain=None, params=opts)
 cnm.fit(images)
 
 end = time.time()
-print(end - start)
+print(end - analysis_start)
 
 
 # ## Component Evaluation

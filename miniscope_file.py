@@ -1,11 +1,10 @@
 import os
 import re
 
-
 def list_session_dirs(src_miniscope_path, animal_name):
     session_dirs = []
     for exp_subdir in os.listdir(src_miniscope_path):
-        if exp_subdir == 'caiman':
+        if exp_subdir.startswith('caiman'):
             continue
         sessions_rootdir = '/'.join([src_miniscope_path, exp_subdir, 'mv_caimg', animal_name])
 
@@ -18,12 +17,22 @@ def list_session_dirs(src_miniscope_path, animal_name):
     return(session_dirs)
 
 
-def list_vidfiles(session_fpath):
+def get_timestamped_path(session_fpath):
     timestamped_dir = [f for f in os.listdir(session_fpath) if f.startswith('H')][0]
     timestamped_path = '/'.join([session_fpath, timestamped_dir])
+    return(timestamped_path)
+
+
+def list_vidfiles(session_fpath):
+    timestamped_path = get_timestamped_path(session_fpath)
 
     msFileList = [f for f in os.listdir(timestamped_path) if f.startswith('msCam') and f.endswith('.avi')]
     msFileList = sorted(msFileList, key=lambda x: int(re.sub('[msCam.avi]', '', x)))
     vid_fpaths = [timestamped_path + '/' + fname for fname in msFileList]
 
     return vid_fpaths
+
+
+def get_timestamp_dat_fpath(session_fpath):
+    timestamped_path = get_timestamped_path(session_fpath)
+    return timestamped_path + '/' + 'timestamp.dat'

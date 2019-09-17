@@ -2,8 +2,6 @@
 import miniscope_file
 
 from datetime import datetime
-import scipy.io as sio
-
 import os
 import time
 import matplotlib.pyplot as plt
@@ -17,9 +15,9 @@ from caiman.motion_correction import MotionCorrect
 from caiman.source_extraction.cnmf import params as params
 
 writeAvi = True
+doPwRigid = False
 
 """# Prepare data"""
-#execfile('vars_setup.sh')
 experiment_month = os.environ['EXP_MONTH']
 experiment_title = os.environ['EXP_TITLE']
 experiment_date = os.environ['EXP_DATE']
@@ -35,11 +33,7 @@ local_miniscope_path = '/'.join([
     experiment_title,
     experiment_date])
 session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
-
-"""# Setup cnmf parameters"""
-
-analyze_behavior = False
-isnonrigid = False
+result_data_dir = '/'.join([local_miniscope_path, 'caiman', animal_name])
 
 now = datetime.now()
 analysis_time = now.strftime("%Y-%m-%d %H:%M") # This is to register when the analysis was performed
@@ -71,7 +65,6 @@ max_deviation_rigid = 3  # maximum deviation allowed for patch with respect to r
 border_nan = 'copy'      # replicate values along the boundaries
 use_cuda = True         # Set to True in order to use GPU
 only_init_patch = True
-memory_fact = 1.0
 
 mc_dict = {
     #'fnames': vid_fpaths,
@@ -90,7 +83,7 @@ mc_dict = {
     'border_nan': border_nan,
     'use_cuda' : use_cuda,
     'only_init_patch' : only_init_patch,
-    'memory_fact': memory_fact
+    'memory_fact': 0.7
 }
 
 opts = params.CNMFParams(params_dict=mc_dict)
@@ -98,9 +91,8 @@ opts = params.CNMFParams(params_dict=mc_dict)
 """# Perform motion correction (might take a while)"""
 def plot_stats(session_fpath, mc):
     # Plot the motion corrected template and associated shifts
-    result_data_dir = s_fpath + '/' + 'caiman'
     subprocess.call(['mkdir', '-p', result_data_dir])
-    plt.figure(figsize=(10,20))
+    plt.figure(figsize=(10, 20))
     plt.subplot(2, 1, 1); plt.imshow(mc.total_template_rig);  # % plot template
     plt.subplot(2, 1, 2); plt.plot(mc.shifts_rig)  # % plot rigid shifts
     plt.legend(['x shifts', 'y shifts'])
@@ -109,7 +101,7 @@ def plot_stats(session_fpath, mc):
     plt.savefig(result_data_dir + '/' + 'mc_summary_figure.svg', edgecolor='w', format='svg', transparent=True)
 
 start = time.time() # This is to keep track of how long the analysis is running
-mc_template = None
+mc_rigid_template = None
 mc_fnames = []
 max_bord_px = 0
 for s_fpath in session_fpaths:
@@ -117,21 +109,25 @@ for s_fpath in session_fpaths:
     print('Aligning session vids:' + str(vids_fpath))
     # do motion correction rigid
     mc = MotionCorrect(vids_fpath, dview=dview, **opts.get_group('motion'))
-    mc.motion_correct(save_movie=True, template=mc_template)
-    fname_mc = mc.fname_tot_els if pw_rigid else mc.fname_tot_rig
-    mc_fnames = mc_fnames + fname_mc
-    if mc_template is None:
-        mc_template = mc.total_template_rig
-    if not pw_rigid:
-        plot_stats(s_fpath, mc)
+    mc.motion_correct(save_movie=True, template=mc_rigid_template)
+
+    if doPwRigid:
+        mc.pw_rigid = True
+        mc.template = mc.mmap_file  # use the template obtained before to save in computation (optional)
+        mc.motion_correct(save_movie=True, template=mc.total_template_rig)
 
     end = time.time()
     print('Motion correction done in ' + str(end - start))
 
+    fname_mc = mc.fname_tot_els if doPwRigid else mc.fname_tot_rig
+    mc_fnames = mc_fnames + fname_mc
+    if mc_rigid_template is None:
+        mc_rigid_template = mc.total_template_rig
+    plot_stats(s_fpath, mc)
 
     """# Map the motion corrected video to memory"""
 
-    if pw_rigid:
+    if doPwRigid:
         bord_px = np.ceil(np.maximum(np.max(np.abs(mc.x_shifts_els)),
                                         np.max(np.abs(mc.y_shifts_els)))).astype(np.int)
     else:
@@ -158,7 +154,7 @@ if writeAvi:
     w = cm.movie(images)
     # using skvideo
     import skvideo.io
-    mcwriter = skvideo.io.FFmpegWriter('/'.join([local_miniscope_path, 'caiman', 'mc.avi']), outputdict={
+    mcwriter = skvideo.io.FFmpegWriter(result_data_dir + '/mc.avi', outputdict={
       '-c:v': 'copy'})
     #mcwriter = skvideo.io.FFmpegWriter(result_data_dir + '/mc.avi')
     for iddxx, frame in enumerate(w):
@@ -166,4 +162,3 @@ if writeAvi:
     mcwriter.close()
 
 cm.stop_server(dview=dview)
-
