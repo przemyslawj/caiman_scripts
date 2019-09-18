@@ -10,8 +10,8 @@ export TEST_REL_DIR="${EXP_MONTH}/${EXP_TITLE}/${EXP_DATE}/test/mv_caimg/${ANIMA
 
 #export RCLONE_CONFIG=drive_synced
 export RCLONE_CONFIG=workdrive
-export CONFIG_FILE=/home/przemek/.config/rclone/rclone.conf
-#export LOCAL_ROOTDIR=/mnt/DATA/Prez
-export LOCAL_ROOTDIR=/home/przemek/neurodata
+export CONFIG_FILE=~/.config/rclone/rclone.conf
+export LOCAL_ROOTDIR=/mnt/DATA/Prez
+#export LOCAL_ROOTDIR=/home/przemek/neurodata
 export DOWNSAMPLE_SUBPATH=cheeseboard-down/down_${DOWNSAMPLE}
 

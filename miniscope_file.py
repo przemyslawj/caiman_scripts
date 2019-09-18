@@ -23,11 +23,18 @@ def get_timestamped_path(session_fpath):
     return(timestamped_path)
 
 
+def sort_mscam(x: str):
+    filename = os.path.basename(x)
+    if not filename.startswith('msCam'):
+        raise Exception('Expected msCam file, but got: ' + x)
+    return int(re.findall("\d+", filename)[0])
+
+
 def list_vidfiles(session_fpath):
     timestamped_path = get_timestamped_path(session_fpath)
 
     msFileList = [f for f in os.listdir(timestamped_path) if f.startswith('msCam') and f.endswith('.avi')]
-    msFileList = sorted(msFileList, key=lambda x: int(re.sub('[msCam.avi]', '', x)))
+    msFileList = sorted(msFileList, key=sort_mscam)
     vid_fpaths = [timestamped_path + '/' + fname for fname in msFileList]
 
     return vid_fpaths
@@ -36,3 +43,15 @@ def list_vidfiles(session_fpath):
 def get_timestamp_dat_fpath(session_fpath):
     timestamped_path = get_timestamped_path(session_fpath)
     return timestamped_path + '/' + 'timestamp.dat'
+
+
+def get_memmap_files(s_fpath):
+    timestamped_path = get_timestamped_path(s_fpath)
+    mmapFiles = [timestamped_path + '/' + f for f in os.listdir(timestamped_path)
+            if f.startswith('msCam') and f.endswith('.mmap')]
+    return sorted(mmapFiles, key=sort_mscam)
+
+
+def get_joined_memmap_fpath(result_data_dir):
+    return [result_data_dir + '/' + f for f in os.listdir(result_data_dir)
+                    if f.startswith('memmap') and f.endswith('.mmap')][0]
