@@ -5,19 +5,16 @@ import miniscope_file
 from load_args import *
 
 import numpy as np
-import os
 import time
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+mpl.style.use('default')
 import scipy.io as sio
 import yaml
 
 import caiman as cm
 from caiman.source_extraction import cnmf
 from caiman.source_extraction.cnmf import params as params
-
-
-mpl.style.use('default')
 
 session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
 
@@ -35,8 +32,8 @@ else:
     memmap_fpath = miniscope_file.get_joined_memmap_fpath(result_data_dir)
 
 Yr, dims, T = cm.load_memmap(memmap_fpath)
-print('Loaded memmap file')
 images = Yr.T.reshape((T,) + dims, order='F')
+print('Loaded memmap file')
 
 # Compute some summary images (correlation and peak to noise) while downsampling temporally 5x to speedup the process and avoid memory overflow
 # change swap dim if output looks weird, it is a problem with tiffile
@@ -56,45 +53,57 @@ plt.savefig(result_data_dir + '/' + 'pnr.svg', edgecolor='w', format='svg', tran
 
 # ## Run CNMFE
 frate = 20
-opts_dict = {
+pw_rigid = False  # flag for pw-rigid motion correction
+
+
+
+border_nan = 'copy'
+Ain = None  # possibility to seed with predetermined binary masks
+gnb = 0  # number of background components (rank) if positive, else exact ring model with following settings
+# gnb= 0: Return background as b and W
+# gnb=-1: Return full rank background B
+# gnb<-1: Don't return background
+
+opts = params.CNMFParams(params_dict={
+    'fnames': memmap_fpath,
     'fr': frate,
-    'use_cuda': True,
-    'memory_fact': 1.0,
     'decay_time': 0.4,
-    'splits_rig': 20,  # for pararelization split the movies in num_splits chunks across time
+    'pw_rigid': pw_rigid,
+    'max_shifts': (5, 5),  # maximum allowed rigid shift
+    'gSig_filt': (3, 3),  # size of filter
+    'strides': (48, 48),  # start a new patch for pw-rigid motion correction every x pixels
+    'overlaps': (24, 24),  # overlap between pathes (size of patch strides+overlaps)
+    'max_deviation_rigid': 3,  # maximum deviation allowed for patch with respect to rigid shifts
+    'border_nan': border_nan,
+    'dims': dims,
     'method_init': 'corr_pnr',  # use this for 1 photon
-    'K': None,  # upper bound on number of components per patch, in general None
-    'gSig': [3, 3],  # gaussian width of a 2D gaussian kernel, which approximates a neuron
-    'gSiz': [15, 15],  # average diameter of a neuron, in general 4*gSig+1
-    'merge_thr': 0.65,  # merging threshold, max correlation allowed
+    'K': None,  # upper bound on number of components per patch, in general None for 1p data
+    'gSig': (3, 3),  # gaussian width of a 2D gaussian kernel, which approximates a neuron
+    'gSiz': (13, 13),  # average diameter of a neuron, in general 4*gSig+1,
+    'merge_thr': 0.7,  # merging threshold, max correlation allowed
     'p': 1,  # order of the autoregressive system
-    'tsub': 2,  # downsampling factor in time for initialization
-    'ssub': 2,  # downsampling factor in space for initialization
+    'tsub': 2,  # downsampling factor in time for initialization, increase if you have memory problems,
+    'ssub': 1,  # downsampling factor in space for initialization, increase if you have memory problems
     'rf': 40,  # half-size of the patches in pixels
-    'stride': 20,  # overlap between the patches in pixels (keep it at least large as gSiz)
+    'stride': 20,  # amount of overlap between the patches in pixels
+                   # (keep it at least large as gSiz, i.e 4 times the neuron size gSig)
     'only_init': True,  # set it to True to run CNMF-E
-    'nb': 1,  # number of background components (rank) if positive,
-    # exact ring model with following settings
-    # gnb= 0: Return background as b and W
-    # gnb=-1: Return full rank background B
-    # gnb<-1: Don't return background
-    'nb_patch': 0,  # number of background components (rank) per patch if gnb>0
+    'nb': gnb,
+    'nb_patch': 0,  # number of background components (rank) per patch if gnb>0, else it is set automatically
     'method_deconvolution': 'oasis',  # could use 'cvxpy' alternatively
-    'low_rank_background': None,  # leaves background of each patch intact True performs global low-rank
-    # approximation if gnb>0
+    'low_rank_background': None,  # None leaves background of each patch intact, True performs global low-rank approximation if gnb>0,
     'update_background_components': True,  # sometimes setting to False improve the results
     'min_corr': 0.8,  # min peak value from correlation image
     'min_pnr': 8,  # min peak to noise ration from PNR image
     'normalize_init': False,  # just leave as is
     'center_psf': True,  # leave as is for 1 photon
-    'ssub_B': 2,  # downsampling factor for background
+    'ssub_B': 2,  # additional downsampling factor in space for background
     'ring_size_factor': 1.4,  # radius of ring is gSiz*ring_size_factor
     'del_duplicates': True,  # whether to remove duplicates from initialization
-    'border_pix': 0  # number of pixels to not consider in the borders)
-}
-opts = params.CNMFParams(params_dict=opts_dict)
+    'border_pix': 0})  # number of pixels to not consider in the borders)
+
 analysis_start = time.time()
-cnm = cnmf.CNMF(n_processes=n_processes, dview=dview, Ain=None, params=opts)
+cnm = cnmf.CNMF(n_processes=n_processes, dview=dview, Ain=Ain, params=opts)
 cnm.fit(images)
 
 end = time.time()
@@ -191,8 +200,8 @@ plt.savefig(result_data_dir + '/' + 'summary_figure.svg', edgecolor='w', format=
 
 # ## Register the timestamps for analysis
 with open(result_data_dir + '/session_info.yaml', 'r') as f:
-    session_info = yaml.load_all(f, Loader=yaml.FullLoader)
-mstime = []
+    session_info = yaml.load(f, Loader=yaml.FullLoader)
+mstime = np.array([], dtype=np.int)
 
 i = 0
 for dat_file in session_info['dat_files']:
@@ -201,9 +210,8 @@ for dat_file in session_info['dat_files']:
     camNumber = camNum[0]
     mstime_idx = np.where(camNum == camNumber)
     this_mstime = sysClock[mstime_idx]
-    this_mstime = this_mstime[1:session_info['session_lengths'][i]]
-    mstime = mstime + this_mstime
-
+    this_mstime = this_mstime[0:session_info['session_lengths'][i]]
+    mstime = np.concatenate([mstime, this_mstime])
     i += 1
 
 mstime[0] = 0
@@ -221,10 +229,21 @@ print('Done analyzing. This took a total ' + str(analysis_duration) + ' s')
 
 save_hdf5 = True
 if save_hdf5:
-    cnm.save(result_data_dir + 'analysis_results.hdf5')
+    cnm.save(result_data_dir + '/analysis_results.hdf5')
 
+
+def find_centroids(SFP):
+    centroids = []
+    for cell in range(SFP.shape[2]):
+        footprint = SFP[:,:,cell]
+        max_val = np.max(footprint)
+        x, y = np.where(footprint > max_val / 3)
+        centroids.append((int(np.median(x)), int(np.median(y))))
+    return centroids
+
+
+meanFrame = np.mean(images[::100], axis=0)
 """# Save the results in Matlab format"""
-
 save_mat = True
 if save_mat:
     from scipy.io import savemat
@@ -240,13 +259,13 @@ if save_mat:
         'time': mstime,
         'sessionLengths': session_info['session_lengths'],
         # 'analysis_time': analysis_time,
-        'meanFrame': [],  # TO DO
-        'Centroids': [],  # TO DO
+        'meanFrame': meanFrame,
+        'Centroids': find_centroids(SFP),
         'CorrProj': cn_filter,
         'PeakToNoiseProj': pnr,
         'RawTraces': RawTraces.conj().transpose(),  # swap time x neurons dimensions
         # 'FiltTraces': cnm.estimates.F_dff,
-        # 'DeconvTraces': cnm.estimates.S.conj().transpose(),
+        'DeconvTraces': cnm.estimates.S.conj().transpose(),
         'SFPs': SFP,
         'numNeurons': SFP_dims[2],
         # 'analysis_duration': analysis_duration

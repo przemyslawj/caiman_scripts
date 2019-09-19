@@ -1,5 +1,6 @@
 import caiman as cm
 
+import numpy as np
 import os
 import skvideo.io
 
@@ -18,14 +19,14 @@ local_miniscope_path = '/'.join([
     experiment_date])
 result_data_dir = '/'.join([local_miniscope_path, 'caiman', animal_name])
 
-def create_images(memmap_fpath):
+def load_images(memmap_fpath):
     # load memory mappable file
     Yr, dims, T = cm.load_memmap(memmap_fpath)
     images = Yr.T.reshape((T,) + dims, order='F')
     return images
 
 def write_avi(memmap_fpath, result_data_dir):
-    images = create_images(memmap_fpath)
+    images = load_images(memmap_fpath)
     # Write motion corrected video to drive
     w = cm.movie(images)
     #mcwriter = skvideo.io.FFmpegWriter(result_data_dir + '/mc.avi', outputdict={

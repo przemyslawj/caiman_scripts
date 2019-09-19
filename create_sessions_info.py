@@ -1,26 +1,17 @@
-import os
 import yaml
 
 import miniscope_file
+from load_args import *
 import caiman as cm
 
 info = dict()
-info['experiment_month'] = os.environ['EXP_MONTH']
-info['experiment_title'] = os.environ['EXP_TITLE']
-info['experiment_date'] = os.environ['EXP_DATE']
-info['animal_name'] = os.environ['ANIMAL']
-info['spatial_downsampling'] = int(os.environ['DOWNSAMPLE'])
-info['downsample_subpath'] = os.environ['DOWNSAMPLE_SUBPATH']
-info['local_rootdir'] = os.environ['LOCAL_ROOTDIR']
-
-local_miniscope_path = '/'.join([
-    info['local_rootdir'],
-    info['downsample_subpath'],
-    info['experiment_month'],
-    info['experiment_title'],
-    info['experiment_date']])
-
-result_data_dir = '/'.join([local_miniscope_path, 'caiman', info['animal_name']])
+info['experiment_month'] = experiment_month
+info['experiment_title'] = experiment_title
+info['experiment_date'] = experiment_date
+info['animal_name'] = animal_name
+info['spatial_downsampling'] = spatial_downsampling
+info['downsample_subpath'] = downsample_subpath
+info['local_rootdir'] = local_rootdir
 
 session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, info['animal_name'])
 info['session_fpaths'] = session_fpaths
