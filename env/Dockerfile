@@ -18,7 +18,7 @@ RUN conda create -n caiman -c conda-forge caiman
 RUN conda install -n caiman -c conda-forge moviepy tifffile ipyparallel peakutils moviepy sk-video
 
 RUN mkdir src && cd src && git clone --depth 1 https://github.com/przemyslawj/caiman_scripts.git
-COPY env/rclone.conf src/caiman_scripts/env/rclone.conf
+COPY rclone.conf src/caiman_scripts/rclone.conf
 RUN mkdir data
 RUN cd src && git clone --depth 1 https://github.com/flatironinstitute/CaImAn.git
 RUN cd src/CaImAn && conda activate caiman && caimanmanager.py install

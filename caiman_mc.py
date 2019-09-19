@@ -34,6 +34,7 @@ local_miniscope_path = '/'.join([
     experiment_date])
 session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
 result_data_dir = '/'.join([local_miniscope_path, 'caiman', animal_name])
+subprocess.call(['mkdir', '-p', result_data_dir])
 
 now = datetime.now()
 analysis_time = now.strftime("%Y-%m-%d %H:%M") # This is to register when the analysis was performed
@@ -91,7 +92,6 @@ opts = params.CNMFParams(params_dict=mc_dict)
 """# Perform motion correction (might take a while)"""
 def plot_stats(session_fpath, mc):
     # Plot the motion corrected template and associated shifts
-    subprocess.call(['mkdir', '-p', result_data_dir])
     plt.figure(figsize=(10, 20))
     m_rig = cm.load(mc.mmap_file)
     plt.subplot(2, 1, 1)
