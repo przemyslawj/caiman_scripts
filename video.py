@@ -18,17 +18,19 @@ local_miniscope_path = '/'.join([
     experiment_date])
 result_data_dir = '/'.join([local_miniscope_path, 'caiman', animal_name])
 
-
-def write_avi(memmap_fpath, result_data_dir):
+def create_images(memmap_fpath):
     # load memory mappable file
     Yr, dims, T = cm.load_memmap(memmap_fpath)
     images = Yr.T.reshape((T,) + dims, order='F')
+    return images
 
+def write_avi(memmap_fpath, result_data_dir):
+    images = create_images(memmap_fpath)
     # Write motion corrected video to drive
     w = cm.movie(images)
-    mcwriter = skvideo.io.FFmpegWriter(result_data_dir + '/mc.avi', outputdict={
-      '-c:v': 'copy'})
-    #mcwriter = skvideo.io.FFmpegWriter(result_data_dir + '/mc.avi')
+    #mcwriter = skvideo.io.FFmpegWriter(result_data_dir + '/mc.avi', outputdict={
+    #  '-c:v': 'copy'})
+    mcwriter = skvideo.io.FFmpegWriter(result_data_dir + '/mc.avi')
     for iddxx, frame in enumerate(w):
       mcwriter.writeFrame(frame.astype('uint8'))
     mcwriter.close()

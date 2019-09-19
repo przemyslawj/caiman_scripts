@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import miniscope_file
+from load_args import *
+
 import numpy as np
 import os
 import time
@@ -13,24 +16,9 @@ import caiman as cm
 from caiman.source_extraction import cnmf
 from caiman.source_extraction.cnmf import params as params
 
-import miniscope_file
 
 mpl.style.use('default')
 
-experiment_month = os.environ['EXP_MONTH']
-experiment_title = os.environ['EXP_TITLE']
-experiment_date = os.environ['EXP_DATE']
-animal_name = os.environ['ANIMAL']
-spatial_downsampling = int(os.environ['DOWNSAMPLE'])
-downsample_subpath = os.environ['DOWNSAMPLE_SUBPATH']
-local_rootdir = os.environ['LOCAL_ROOTDIR']
-
-local_miniscope_path = '/'.join([
-    local_rootdir,
-    downsample_subpath,
-    experiment_month,
-    experiment_title,
-    experiment_date])
 session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
 
 """# Prepare data"""
@@ -38,7 +26,6 @@ c, dview, n_processes = cm.cluster.setup_cluster(
     backend='local', n_processes=None, single_thread=False, ignore_preexisting=True)
 
 # ## Load Motion Corrected data
-result_data_dir = '/'.join([local_miniscope_path, 'caiman', animal_name])
 load_mmap = True
 if not load_mmap:
     mc_fpath = result_data_dir + '/mc.avi'
@@ -72,7 +59,7 @@ frate = 20
 opts_dict = {
     'fr': frate,
     'use_cuda': True,
-    'memory_fact': 1.5,
+    'memory_fact': 1.0,
     'decay_time': 0.4,
     'splits_rig': 20,  # for pararelization split the movies in num_splits chunks across time
     'method_init': 'corr_pnr',  # use this for 1 photon
