@@ -1,0 +1,4 @@
+env/rclone.conf
+*.npz
+*.pyc
+.idea/*
