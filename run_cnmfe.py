@@ -250,6 +250,7 @@ if save_mat:
 
     results_dict = {
         # 'dirName': path_to_analyze,
+        'Experiment': animal_name,
         'numFiles': 1,
         'framesNum': len(RawTraces[1]),
         'maxFramesPerFile': 1000,
