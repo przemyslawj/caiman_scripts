@@ -11,16 +11,18 @@ import matplotlib as mpl
 mpl.style.use('default')
 import scipy.io as sio
 import yaml
+import logging
 
 import caiman as cm
 from caiman.source_extraction import cnmf
 from caiman.source_extraction.cnmf import params as params
 
+logging.basicConfig(level=logging.INFO)
 session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
 
 """# Prepare data"""
 c, dview, n_processes = cm.cluster.setup_cluster(
-    backend='local', n_processes=None, single_thread=False, ignore_preexisting=True)
+    backend='local', n_processes=3, single_thread=False, ignore_preexisting=True)
 
 # ## Load Motion Corrected data
 load_mmap = True
@@ -54,54 +56,135 @@ plt.savefig(result_data_dir + '/' + 'pnr.svg', edgecolor='w', format='svg', tran
 # ## Run CNMFE
 frate = 20
 pw_rigid = False  # flag for pw-rigid motion correction
-
-
-
 border_nan = 'copy'
 Ain = None  # possibility to seed with predetermined binary masks
 gnb = 0  # number of background components (rank) if positive, else exact ring model with following settings
 # gnb= 0: Return background as b and W
 # gnb=-1: Return full rank background B
 # gnb<-1: Don't return background
+decay_time = 0.4  # length of a typical transient in seconds
 
-opts = params.CNMFParams(params_dict={
-    'memory_fact': 0.8,
+# motion correction parameters
+motion_correct = False  # flag for motion correction
+pw_rigid = False  # flag for pw-rigid motion correction
+
+gSig_filt = (3, 3)  # size of filter, in general gSig (see below),
+#                      change this one if algorithm does not work
+max_shifts = (5, 5)  # maximum allowed rigid shift
+strides = (48, 48)  # start a new patch for pw-rigid motion correction every x pixels
+overlaps = (24, 24)  # overlap between pathes (size of patch strides+overlaps)
+# maximum deviation allowed for patch with respect to rigid shifts
+max_deviation_rigid = 3
+border_nan = 'copy'
+
+mc_dict = {
     'fnames': memmap_fpath,
     'fr': frate,
-    'decay_time': 0.4,
+    'decay_time': decay_time,
     'pw_rigid': pw_rigid,
-    'max_shifts': (5, 5),  # maximum allowed rigid shift
-    'gSig_filt': (3, 3),  # size of filter
-    'strides': (48, 48),  # start a new patch for pw-rigid motion correction every x pixels
-    'overlaps': (24, 24),  # overlap between pathes (size of patch strides+overlaps)
-    'max_deviation_rigid': 3,  # maximum deviation allowed for patch with respect to rigid shifts
-    'border_nan': border_nan,
-    'dims': dims,
-    'method_init': 'corr_pnr',  # use this for 1 photon
-    'K': None,  # upper bound on number of components per patch, in general None for 1p data
-    'gSig': (3, 3),  # gaussian width of a 2D gaussian kernel, which approximates a neuron
-    'gSiz': (13, 13),  # average diameter of a neuron, in general 4*gSig+1,
-    'merge_thr': 0.7,  # merging threshold, max correlation allowed
-    'p': 1,  # order of the autoregressive system
-    'tsub': 2,  # downsampling factor in time for initialization, increase if you have memory problems,
-    'ssub': 1,  # downsampling factor in space for initialization, increase if you have memory problems
-    'rf': 40,  # half-size of the patches in pixels
-    'stride': 20,  # amount of overlap between the patches in pixels
-                   # (keep it at least large as gSiz, i.e 4 times the neuron size gSig)
-    'only_init': True,  # set it to True to run CNMF-E
-    'nb': gnb,
-    'nb_patch': 0,  # number of background components (rank) per patch if gnb>0, else it is set automatically
-    'method_deconvolution': 'oasis',  # could use 'cvxpy' alternatively
-    'low_rank_background': None,  # None leaves background of each patch intact, True performs global low-rank approximation if gnb>0,
-    'update_background_components': True,  # sometimes setting to False improve the results
-    'min_corr': 0.8,  # min peak value from correlation image
-    'min_pnr': 8,  # min peak to noise ration from PNR image
-    'normalize_init': False,  # just leave as is
-    'center_psf': True,  # leave as is for 1 photon
-    'ssub_B': 2,  # additional downsampling factor in space for background
-    'ring_size_factor': 1.4,  # radius of ring is gSiz*ring_size_factor
-    'del_duplicates': True,  # whether to remove duplicates from initialization
-    'border_pix': 0})  # number of pixels to not consider in the borders)
+    'max_shifts': max_shifts,
+    'gSig_filt': gSig_filt,
+    'strides': strides,
+    'overlaps': overlaps,
+    'max_deviation_rigid': max_deviation_rigid,
+    'border_nan': border_nan
+}
+
+opts = params.CNMFParams(params_dict=mc_dict)
+
+# opts = params.CNMFParams(params_dict={
+#     'memory_fact': 0.8,
+#     'fnames': memmap_fpath,
+#     'fr': frate,
+#     'decay_time': 0.4,
+#     'pw_rigid': pw_rigid,
+#     'max_shifts': (5, 5),  # maximum allowed rigid shift
+#     'gSig_filt': (3, 3),  # size of filter
+#     'strides': (48, 48),  # start a new patch for pw-rigid motion correction every x pixels
+#     'overlaps': (24, 24),  # overlap between pathes (size of patch strides+overlaps)
+#     'max_deviation_rigid': 3,  # maximum deviation allowed for patch with respect to rigid shifts
+#     'border_nan': border_nan
+# })
+# opts.change_params(params_dict={
+#     'dims': dims,
+#     'method_init': 'corr_pnr',  # use this for 1 photon
+#     'K': None,  # upper bound on number of components per patch, in general None for 1p data
+#     'gSig': (3, 3),  # gaussian width of a 2D gaussian kernel, which approximates a neuron
+#     'gSiz': (13, 13),  # average diameter of a neuron, in general 4*gSig+1,
+#     'merge_thr': 0.7,  # merging threshold, max correlation allowed
+#     'p': 1,  # order of the autoregressive system
+#     'tsub': 2,  # downsampling factor in time for initialization, increase if you have memory problems,
+#     'ssub': 1,  # downsampling factor in space for initialization, increase if you have memory problems
+#     'rf': 40,  # half-size of the patches in pixels
+#     'stride': 20,  # amount of overlap between the patches in pixels
+#                    # (keep it at least large as gSiz, i.e 4 times the neuron size gSig)
+#     'only_init': True,  # set it to True to run CNMF-E
+#     'nb': gnb,
+#     'nb_patch': 0,  # number of background components (rank) per patch if gnb>0, else it is set automatically
+#     'method_deconvolution': 'oasis',  # could use 'cvxpy' alternatively
+#     'low_rank_background': None,  # None leaves background of each patch intact, True performs global low-rank approximation if gnb>0,
+#     'update_background_components': True,  # sometimes setting to False improve the results
+#     'min_corr': 0.8,  # min peak value from correlation image
+#     'min_pnr': 8,  # min peak to noise ration from PNR image
+#     'normalize_init': False,  # just leave as is
+#     'center_psf': True,  # leave as is for 1 photon
+#     'ssub_B': 2,  # additional downsampling factor in space for background
+#     'ring_size_factor': 1.4,  # radius of ring is gSiz*ring_size_factor
+#     'del_duplicates': True,  # whether to remove duplicates from initialization
+#     'border_pix': 0})  # number of pixels to not consider in the borders)
+p = 1               # order of the autoregressive system
+K = None            # upper bound on number of components per patch, in general None for 1p data
+gSig = (3, 3)       # gaussian width of a 2D gaussian kernel, which approximates a neuron
+gSiz = (13, 13)     # average diameter of a neuron, in general 4*gSig+1
+Ain = None          # possibility to seed with predetermined binary masks
+merge_thr = .7      # merging threshold, max correlation allowed
+rf = 40             # half-size of the patches in pixels. e.g., if rf=40, patches are 80x80
+stride_cnmf = 20    # amount of overlap between the patches in pixels
+#                     (keep it at least large as gSiz, i.e 4 times the neuron size gSig)
+tsub = 2            # downsampling factor in time for initialization,
+#                     increase if you have memory problems
+ssub = 1            # downsampling factor in space for initialization,
+#                     increase if you have memory problems
+#                     you can pass them here as boolean vectors
+low_rank_background = None  # None leaves background of each patch intact,
+#                     True performs global low-rank approximation if gnb>0
+gnb = 0             # number of background components (rank) if positive,
+#                     else exact ring model with following settings
+#                         gnb= 0: Return background as b and W
+#                         gnb=-1: Return full rank background B
+#                         gnb<-1: Don't return background
+nb_patch = 0        # number of background components (rank) per patch if gnb>0,
+#                     else it is set automatically
+min_corr = .8       # min peak value from correlation image
+min_pnr = 10        # min peak to noise ration from PNR image
+ssub_B = 2          # additional downsampling factor in space for background
+ring_size_factor = 1.4  # radius of ring is gSiz*ring_size_factor
+
+opts.change_params(params_dict={'dims': dims,
+                                'method_init': 'corr_pnr',  # use this for 1 photon
+                                'K': K,
+                                'gSig': gSig,
+                                'gSiz': gSiz,
+                                'merge_thr': merge_thr,
+                                'p': p,
+                                'tsub': tsub,
+                                'ssub': ssub,
+                                'rf': rf,
+                                'stride': stride_cnmf,
+                                'only_init': True,    # set it to True to run CNMF-E
+                                'nb': gnb,
+                                'nb_patch': nb_patch,
+                                'method_deconvolution': 'oasis',       # could use 'cvxpy' alternatively
+                                'low_rank_background': low_rank_background,
+                                'update_background_components': True,  # sometimes setting to False improve the results
+                                'min_corr': min_corr,
+                                'min_pnr': min_pnr,
+                                'normalize_init': False,               # just leave as is
+                                'center_psf': True,                    # leave as is for 1 photon
+                                'ssub_B': ssub_B,
+                                'ring_size_factor': ring_size_factor,
+                                'del_duplicates': True,                # whether to remove duplicates from initialization
+                                'border_pix': 0})                # number of pixels to not consider in the borders)
 
 print('Starting CNMF')
 analysis_start = time.time()
