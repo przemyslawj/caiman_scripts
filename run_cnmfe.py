@@ -22,7 +22,7 @@ session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_n
 
 """# Prepare data"""
 c, dview, n_processes = cm.cluster.setup_cluster(
-    backend='local', n_processes=3, single_thread=False, ignore_preexisting=True)
+    backend='local', n_processes=min(4, ncores), single_thread=False, ignore_preexisting=True)
 
 # ## Load Motion Corrected data
 load_mmap = True
@@ -39,7 +39,7 @@ print('Loaded memmap file')
 
 # Compute some summary images (correlation and peak to noise) while downsampling temporally 5x to speedup the process and avoid memory overflow
 # change swap dim if output looks weird, it is a problem with tiffile
-cn_filter, pnr = cm.summary_images.correlation_pnr(images[::5], gSig=3, swap_dim=False)
+cn_filter, pnr = cm.summary_images.correlation_pnr(images[::20], gSig=3, swap_dim=False)
 
 # Plot the results of the correlation/PNR projection
 plt.figure(figsize=(20, 10))
@@ -204,13 +204,13 @@ print('Finished CNMF')
 min_SNR = 3  # adaptive way to set threshold on the transient size
 r_values_min = 0.8  # threshold on space consistency (if you lower more components be accepted, potentially with
 # worst quality)
+print(' ***** ')
+print('Number of total components: ', len(cnm.estimates.C))
 cnm.params.set('quality', {'min_SNR': min_SNR,
                            'rval_thr': r_values_min,
                            'use_cnn': False})
 cnm.estimates.evaluate_components(images, cnm.params, dview=dview)
 
-print(' ***** ')
-print('Number of total components: ', len(cnm.estimates.C))
 print('Number of accepted components: ', len(cnm.estimates.idx_components))
 
 # ## Plot results
@@ -350,6 +350,9 @@ if save_mat:
         'Centroids': find_centroids(SFP),
         'CorrProj': cn_filter,
         'PeakToNoiseProj': pnr,
+        'PNR': cnm.estimates.SNR_comp, # Calculated Peak-to-Noise ratios
+        'cnn_preds': cnm.estimates.cnn_preds, # CNN prediction probability
+        'neurons_sn': cnm.estimates.neurons_sn, # neurons noise estimation
         'RawTraces': RawTraces.conj().transpose(),  # swap time x neurons dimensions
         # 'FiltTraces': cnm.estimates.F_dff,
         'DeconvTraces': cnm.estimates.S.conj().transpose(),

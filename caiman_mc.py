@@ -3,6 +3,7 @@ import miniscope_file
 from load_args import *
 
 from datetime import datetime
+import logging
 import os
 import time
 import matplotlib.pyplot as plt
@@ -16,8 +17,9 @@ import caiman as cm
 from caiman.motion_correction import MotionCorrect
 from caiman.source_extraction.cnmf import params as params
 
-doPwRigid = False
+logging.basicConfig(level=logging.INFO)
 
+doPwRigid = False
 
 session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
 subprocess.call(['mkdir', '-p', result_data_dir])
@@ -32,7 +34,7 @@ analysis_start = time.time() # This is to register the time spent analyzing
 #if 'dview' in locals():
 #    cm.stop_server(dview=dview)
 c, dview, n_processes = cm.cluster.setup_cluster(
-    backend='local', n_processes=None, single_thread=False)
+    backend='local', n_processes=ncores, single_thread=False)
 
 """# Set parameters for motion correction
 Ideally, optimize these for your datasets then stick to these values
@@ -70,7 +72,7 @@ mc_dict = {
     'border_nan': border_nan,
     'use_cuda' : use_cuda,
     'only_init_patch' : only_init_patch,
-    'memory_fact': 0.7
+    'memory_fact': 1.0
 }
 
 opts = params.CNMFParams(params_dict=mc_dict)
@@ -79,9 +81,10 @@ opts = params.CNMFParams(params_dict=mc_dict)
 def plot_stats(session_fpath, mc):
     # Plot the motion corrected template and associated shifts
     plt.figure(figsize=(10, 20))
-    m_rig = cm.load(mc.mmap_file)
     plt.subplot(2, 1, 1)
-    plt.imshow(m_rig.local_correlations(eight_neighbours=True, swap_dim=False))
+    # m_rig = cm.load(mc.mmap_file)
+    # plt.imshow(m_rig.local_correlations(eight_neighbours=True, swap_dim=False))
+    plt.imshow(mc.total_template_rig)
     plt.subplot(2, 1, 2); plt.plot(mc.shifts_rig)  # % plot rigid shifts
     plt.legend(['x shifts', 'y shifts'])
     plt.xlabel('frames')
@@ -146,5 +149,10 @@ for s_fpath in session_fpaths:
     mc_stats['max_shift'] = int(max_shift)
     with open(mc_stats_fpath, 'w') as f:
         yaml.dump(mc_stats, f)
+
+    # Restart server to clear memory
+    cm.stop_server(dview=dview)
+    c, dview, n_processes = cm.cluster.setup_cluster(
+        backend='local', n_processes=n_processes, single_thread=False)
 
 cm.stop_server(dview=dview)

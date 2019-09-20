@@ -7,6 +7,7 @@ animal_name = os.environ['ANIMAL']
 spatial_downsampling = int(os.environ['DOWNSAMPLE'])
 downsample_subpath = os.environ['DOWNSAMPLE_SUBPATH']
 local_rootdir = os.environ['LOCAL_ROOTDIR']
+ncores = int(os.environ['NCORES'])
 
 local_miniscope_path = '/'.join([
     local_rootdir,

@@ -45,13 +45,13 @@ def get_timestamp_dat_fpath(session_fpath):
     return timestamped_path + '/' + 'timestamp.dat'
 
 
-def get_memmap_files(s_fpath, rigid=True):
+def get_memmap_files(s_fpath, rigid=True, prefix='msCam'):
     infix = '_els_'
     if rigid:
         infix = '_rig_'
     timestamped_path = get_timestamped_path(s_fpath)
     mmapFiles = [timestamped_path + '/' + f for f in os.listdir(timestamped_path)
-            if f.startswith('msCam') and f.endswith('.mmap') and infix in f]
+            if f.startswith(prefix) and f.endswith('.mmap') and infix in f]
     return sorted(mmapFiles, key=sort_mscam)
 
 
