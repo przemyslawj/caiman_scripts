@@ -65,6 +65,7 @@ gnb = 0  # number of background components (rank) if positive, else exact ring m
 # gnb<-1: Don't return background
 
 opts = params.CNMFParams(params_dict={
+    'memory_fact': 0.8,
     'fnames': memmap_fpath,
     'fr': frate,
     'decay_time': 0.4,
@@ -102,12 +103,14 @@ opts = params.CNMFParams(params_dict={
     'del_duplicates': True,  # whether to remove duplicates from initialization
     'border_pix': 0})  # number of pixels to not consider in the borders)
 
+print('Starting CNMF')
 analysis_start = time.time()
 cnm = cnmf.CNMF(n_processes=n_processes, dview=dview, Ain=Ain, params=opts)
 cnm.fit(images)
 
 end = time.time()
 print(end - analysis_start)
+print('Finished CNMF')
 
 # ## Component Evaluation
 # The components are evaluated in three ways:

@@ -8,7 +8,9 @@ import os
 import subprocess
 import yaml
 
-writeAvi = True
+from caiman.cluster import setup_cluster
+
+writeAvi = False
 border_nan = 'copy'
 session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
 
@@ -28,9 +30,11 @@ for s_fpath in session_fpaths:
     max_shift = 0 if border_nan is 'copy' else session_info['max_shift']
     max_bord_px = max(max_bord_px, max_shift)
 
+c, dview, n_processes = setup_cluster(backend='local', n_processes=None, single_thread=False)
 fname_new = cm.save_memmap(mc_fnames, base_name='memmap_', order='C',
-                            border_to_0=max_bord_px)
-print('Motion corrected videos has been mapped to single memory file')
+                           border_to_0=max_bord_px)
+print('Motion corrected videos has been mapped to single file')
+cm.stop_server(dview=dview)
 
 subprocess.call(['mkdir', '-p', '/'.join([local_miniscope_path, 'caiman', animal_name])])
 output_file = '/'.join([local_miniscope_path, 'caiman', animal_name, os.path.basename(fname_new)])

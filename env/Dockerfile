@@ -2,7 +2,7 @@ FROM continuumio/anaconda3
 
 RUN mkdir /src
 WORKDIR /src
-RUN apt-get update && apt-get install -y curl git vim
+RUN apt-get update && apt-get install -y git vim tree
 RUN git clone --depth 1 https://github.com/przemyslawj/caiman_scripts.git
 COPY rclone.conf caiman_scripts/env/rclone.conf
 

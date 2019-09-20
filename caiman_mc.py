@@ -147,6 +147,4 @@ for s_fpath in session_fpaths:
     with open(mc_stats_fpath, 'w') as f:
         yaml.dump(mc_stats, f)
 
-
-
 cm.stop_server(dview=dview)
