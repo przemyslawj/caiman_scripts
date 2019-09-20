@@ -21,6 +21,7 @@ RUN conda update --yes conda
 RUN conda install -c anaconda cython
 RUN conda create -n caiman -c conda-forge caiman
 RUN conda install -n caiman -c conda-forge moviepy tifffile ipyparallel peakutils moviepy sk-video
+RUN conda activate caiman && pip install imageio==2.4.1
 
 RUN git clone --depth 1 https://github.com/flatironinstitute/CaImAn.git
 RUN cd CaImAn && conda activate caiman && caimanmanager.py install

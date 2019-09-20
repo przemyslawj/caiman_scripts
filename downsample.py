@@ -1,17 +1,9 @@
 import miniscope_file
 
-import os
 from moviepy.editor import VideoFileClip
+from load_args import *
 
-
-experiment_month = os.environ['EXP_MONTH']
-experiment_title = os.environ['EXP_TITLE']
-experiment_date = os.environ['EXP_DATE']
-animal_name = os.environ['ANIMAL']
-spatial_downsampling = int(os.environ['DOWNSAMPLE'])
-downsample_subpath = os.environ['DOWNSAMPLE_SUBPATH']
-local_rootdir = os.environ['LOCAL_ROOTDIR']
-
+print('local miniscope path: ' + local_miniscope_path)
 down_size = [752 / spatial_downsampling, 480 / spatial_downsampling]
 
 local_miniscope_path = '/'.join([
