@@ -3,8 +3,6 @@ FROM continuumio/anaconda3
 RUN mkdir /src
 WORKDIR /src
 RUN apt-get update && apt-get install -y git vim tree
-RUN git clone --depth 1 https://github.com/przemyslawj/caiman_scripts.git
-COPY rclone.conf caiman_scripts/env/rclone.conf
 
 ENV PATH /opt/conda/bin:$PATH
 # Workaround to allow using 'conda activate': https://github.com/ContinuumIO/docker-images/issues/89
@@ -25,4 +23,10 @@ RUN conda activate caiman && pip install imageio==2.4.1
 
 RUN git clone --depth 1 https://github.com/flatironinstitute/CaImAn.git
 RUN cd CaImAn && conda activate caiman && caimanmanager.py install
+
+RUN git clone --depth 1 https://github.com/przemyslawj/caiman_scripts.git
+COPY rclone.conf caiman_scripts/env/rclone.conf
+
+WORKDIR /src/caiman_scripts
+ENTRYPOINT ["./pipeline.sh"]
 
