@@ -17,7 +17,7 @@ session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_n
 mc_fnames = []
 max_bord_px = 0
 for s_fpath in session_fpaths:
-    session_memmap = miniscope_file.get_memmap_files(s_fpath)
+    session_memmap = miniscope_file.get_memmap_files(s_fpath, pwRigid=doPwRigid)
     session_vids = miniscope_file.list_vidfiles(s_fpath)
     mc_stats_fpath = miniscope_file.get_timestamped_path(s_fpath) + '/mc_stats.yaml'
     if not os.path.isfile(mc_stats_fpath):

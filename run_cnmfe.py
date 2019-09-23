@@ -22,7 +22,7 @@ session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_n
 
 """# Prepare data"""
 c, dview, n_processes = cm.cluster.setup_cluster(
-    backend='local', n_processes=min(4, ncores), single_thread=False, ignore_preexisting=True)
+    backend='local', n_processes=min(3, ncores), single_thread=False, ignore_preexisting=True)
 
 # ## Load Motion Corrected data
 load_mmap = True

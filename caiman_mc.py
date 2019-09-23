@@ -1,6 +1,7 @@
 """# Install and import dependencies"""
 import miniscope_file
 from load_args import *
+import video
 
 from datetime import datetime
 import logging
@@ -17,9 +18,8 @@ import caiman as cm
 from caiman.motion_correction import MotionCorrect
 from caiman.source_extraction.cnmf import params as params
 
-logging.basicConfig(level=logging.INFO)
 
-doPwRigid = False
+logging.basicConfig(level=logging.INFO)
 
 session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
 subprocess.call(['mkdir', '-p', result_data_dir])
@@ -52,7 +52,7 @@ strides = (48, 48)       # start a new patch for pw-rigid motion correction ever
 overlaps = (16, 16)      # overlap between patches (size of patch strides+overlaps)
 max_deviation_rigid = 3  # maximum deviation allowed for patch with respect to rigid shifts
 border_nan = 'copy'      # replicate values along the boundaries
-use_cuda = True         # Set to True in order to use GPU
+use_cuda = False         # Set to True in order to use GPU
 only_init_patch = True
 
 mc_dict = {
@@ -77,18 +77,63 @@ mc_dict = {
 
 opts = params.CNMFParams(params_dict=mc_dict)
 
+
+def get_mean_frame(f):
+    if f.endswith('.mmap'):
+        m = video.load_images(f)
+        return np.mean(m, 0)
+    elif f.endswith('.avi'):
+        return video.mean_frame_avi(f)
+    else:
+        raise ValueError('Extension not supported for file: ' + os.path.basename(f))
+
+
+def calc_crispness(mean_frame):
+    return float(np.sqrt(
+        np.sum(np.sum(np.array(np.gradient(mean_frame)) ** 2, 0))))
+
+
+def eval_mc_quality(fnames):
+    if len(fnames) == 0:
+        return [], []
+
+    joint_crispness_list = []
+    crispness_list = []
+    mf1 = get_mean_frame(fnames[0])
+    for f1, f2 in zip(fnames[:-1], fnames[1:]):
+        if mf1 is None:
+            mf1 = get_mean_frame(f1)
+        crispness_list.append(calc_crispness(mf1))
+        mf2 = get_mean_frame(f2)
+        joint_crispness_list.append(calc_crispness((mf1 + mf2) / 2))
+        mf1 = mf2
+    crispness_list.append(calc_crispness(mf1))
+    return crispness_list, joint_crispness_list
+
+
 """# Perform motion correction (might take a while)"""
-def plot_stats(session_fpath, mc):
+def plot_stats(session_fpath, mc, shifts_rig):
     # Plot the motion corrected template and associated shifts
     plt.figure(figsize=(10, 20))
-    plt.subplot(2, 1, 1)
+    nplots = 3 if doPwRigid else 2
+    plt.subplot(nplots, 1, 1)
     # m_rig = cm.load(mc.mmap_file)
     # plt.imshow(m_rig.local_correlations(eight_neighbours=True, swap_dim=False))
     plt.imshow(mc.total_template_rig)
-    plt.subplot(2, 1, 2); plt.plot(mc.shifts_rig)  # % plot rigid shifts
-    plt.legend(['x shifts', 'y shifts'])
+
+    plt.subplot(nplots, 1, 2)
+    plt.plot(shifts_rig)  # % plot rigid shifts
+    plt.legend(['rig x shifts', 'rig y shifts'])
     plt.xlabel('frames')
     plt.ylabel('pixels')
+    if doPwRigid:
+        plt.subplot(nplots, 1, 3)
+        plt.plot(np.max(mc.x_shifts_els, axis=1))
+        plt.plot(np.max(mc.y_shifts_els, axis=1))
+        plt.legend(['max pw x shifts', 'max pw y shifts'])
+        plt.xlabel('frames')
+        plt.ylabel('pixels')
+
     name_parts = session_fpath.split(os.path.sep)
     plt_fname = '_'.join([name_parts[-4], name_parts[-2], name_parts[-1], 'mc_summary.svg'])
     plt.savefig(result_data_dir + '/' + plt_fname, edgecolor='w', format='svg', transparent=True)
@@ -98,6 +143,7 @@ def mc_vids(vids_fpath, mc_rigid_template):
     start = time.time()
     mc = MotionCorrect(vids_fpath, dview=dview, **opts.get_group('motion'))
     mc.motion_correct(save_movie=True, template=mc_rigid_template)
+    shifts_rig = mc.shifts_rig
 
     if doPwRigid:
         mc.pw_rigid = True
@@ -106,7 +152,7 @@ def mc_vids(vids_fpath, mc_rigid_template):
 
     duration = time.time() - start
     print('Motion correction done in ' + str(duration))
-    return mc, duration
+    return mc, duration, shifts_rig
 
 
 max_bord_px = 0
@@ -120,21 +166,21 @@ for s_fpath in session_fpaths:
     mc_stats_fpath = miniscope_file.get_timestamped_path(s_fpath) + '/mc_stats.yaml'
 
     # If directory already processed
-    memmap_files = miniscope_file.get_memmap_files(s_fpath)
+    memmap_files = miniscope_file.get_memmap_files(s_fpath, pwRigid=doPwRigid)
     if (len(memmap_files) >= len(session_vids)
             and (mc_rigid_template is not None)
             and (os.path.isfile(mc_stats_fpath))):
         continue
 
     print('Aligning session vids:' + str(session_vids))
-    mc, duration = mc_vids(session_vids, mc_rigid_template)
+    mc, duration, shifts_rig = mc_vids(session_vids, mc_rigid_template)
     fname_mc = mc.fname_tot_els if doPwRigid else mc.fname_tot_rig
     print('Created motion corrected files: ' + str(fname_mc))
 
     if mc_rigid_template is None:
         mc_rigid_template = mc.total_template_rig
         np.save(rigid_template_fpath, mc_rigid_template)
-    plot_stats(s_fpath, mc)
+    plot_stats(s_fpath, mc, shifts_rig)
 
     if doPwRigid:
         max_shift = np.ceil(np.maximum(np.max(np.abs(mc.x_shifts_els)),
@@ -147,6 +193,13 @@ for s_fpath in session_fpaths:
     mc_stats['analysed_datetime'] = analysis_time
     mc_stats['mc_duration'] = duration
     mc_stats['max_shift'] = int(max_shift)
+    mc_stats['PwRigid'] = doPwRigid
+    vids_crispness, joint_vids_crispness = eval_mc_quality(session_vids)
+    mc_stats['crispness_before'] = vids_crispness
+    mc_stats['crispness_before_movie_pairs'] = joint_vids_crispness
+    vids_crispness, joint_vids_crispness = eval_mc_quality(fname_mc)
+    mc_stats['crispness_after'] = vids_crispness
+    mc_stats['crispness_after_movie_pairs'] = joint_vids_crispness
     with open(mc_stats_fpath, 'w') as f:
         yaml.dump(mc_stats, f)
 
