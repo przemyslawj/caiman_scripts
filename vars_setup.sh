@@ -1,4 +1,9 @@
 #!/bin/bash
+export EXP_MONTH=2019-08
+export EXP_TITLE=habituation
+export EXP_DATE=2019-08-27
+export ANIMAL=E-BL
+
 export NCORES=4
 export DOWNSAMPLE=2
 
