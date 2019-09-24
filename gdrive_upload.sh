@@ -1,7 +1,5 @@
 #!/bin/bash
 
-source vars_setup.sh
-
 rclone copy -P --config ${CONFIG_FILE} ${LOCAL_ROOTDIR}/${DOWNSAMPLE_SUBPATH}/${HOME_REL_DIR} \
     ${RCLONE_CONFIG}:${DOWNSAMPLE_SUBPATH}/${HOME_REL_DIR}
 rclone copy -P --config ${CONFIG_FILE} ${LOCAL_ROOTDIR}/${DOWNSAMPLE_SUBPATH}/${TRIAL_REL_DIR} \

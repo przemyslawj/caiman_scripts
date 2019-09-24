@@ -5,8 +5,6 @@
 EXP_MONTH=2019-08
 EXP_TITLE=habituation
 dry_run=0
-# load defaults
-source vars_setup.sh
 
 
 while [[ $# -gt 0 ]]; do
@@ -49,6 +47,8 @@ for exp_date in ${dates[*]}; do
         export EXP_DATE=$exp_date
         export EXP_MONTH
         export EXP_TITLE
+        # load defaults
+        source vars_setup.sh
         echo "Running pipeline for animal=${ANIMAL} date=${EXP_DATE}"
 
         if [ $dry_run -eq 1 ]; then
@@ -90,5 +90,9 @@ for exp_date in ${dates[*]}; do
 
         ./gdrive_upload.sh
     done
+
+    rm -rf $TRIAL_REL_DIR
+    rm -rf $HOME_REL_DIR
+    rm -rf $TEST_REL_DIR
 done
 
