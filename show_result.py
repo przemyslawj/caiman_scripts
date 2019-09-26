@@ -5,34 +5,26 @@ import caiman as cm
 import cv2
 import numpy as np
 import os
-import yaml
 
 import video
+
+from miniscope_file import gdrive_download_file, load_session_info
 
 # Choose video
 exp_month = '2019-08'
 exp_title = 'habituation'
 exp_date = '2019-08-27'
-animal = 'F-BL'
+animal = 'E-TR'
 rootdir = '/home/przemek/neurodata/'
 gdrive_subdir = 'cheeseboard-down/down_2'
 
 
-vid_index = 2
+vid_index = 1
 session_index = 1
 
 rclone_config = os.environ['RCLONE_CONFIG']
 
 """ Prepare data """
-
-
-def gdrive_download_file(gdrive_fpath, local_dir):
-    import subprocess
-    subprocess.run(['mkdir', '-p', local_dir])
-    subprocess.run(['rclone', 'copy', '-P', '--config', 'env/rclone.conf',
-                    rclone_config + ':' + gdrive_fpath,
-                    local_dir])
-
 gdrive_dated_dir = os.path.join(gdrive_subdir, exp_month, exp_title, exp_date)
 local_dated_dir = os.path.join(rootdir, gdrive_dated_dir)
 gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal)
@@ -40,13 +32,9 @@ result_dir = os.path.join(local_dated_dir, 'caiman', animal)
 # Download result files if not stored locally
 h5fpath = os.path.join(result_dir, 'analysis_results.hdf5')
 if not os.path.isfile(h5fpath):
-    gdrive_download_file(gdrive_result_dir + '/analysis_results.hdf5', result_dir)
+    gdrive_download_file(gdrive_result_dir + '/analysis_results.hdf5', result_dir, rclone_config)
 
-session_info_fpath = os.path.join(result_dir, 'session_info.yaml')
-if not os.path.isfile(session_info_fpath):
-    gdrive_download_file(gdrive_result_dir + '/session_info.yaml', result_dir)
-with open(session_info_fpath, 'r') as f:
-    session_info = yaml.load(f, Loader=yaml.FullLoader)
+session_info = load_session_info(result_dir, gdrive_result_dir, rclone_config)
 session_lengths = np.cumsum([0] + session_info['session_lengths'])
 session_trace_offset = session_lengths[session_index - 1]
 
@@ -58,7 +46,7 @@ local_mmap_fpath = os.path.join(local_mmap_dir, mmap_fname)
 if not os.path.isfile(local_mmap_fpath):
     gdrive_mmap_dir = '/'.join([gdrive_subdir, exp_month, exp_title, exp_date, mmap_session_subdir])
     gdrive_mmap_fpath = os.path.join(gdrive_mmap_dir, mmap_fname)
-    gdrive_download_file(gdrive_mmap_fpath, local_mmap_dir)
+    gdrive_download_file(gdrive_mmap_fpath, local_mmap_dir, rclone_config)
 
 # Load results
 cnm_obj = load_CNMF(h5fpath)
@@ -114,22 +102,28 @@ def save_movie(estimate, imgs, frames, q_max=99.5, q_min=2, gain=0.6,
     maxmov = np.nanpercentile(mov[0:10], q_max) if q_max < 100 else np.nanmax(mov)
     minmov = np.nanpercentile(mov[0:10], q_min) if q_min > 0 else np.nanmin(mov)
     index = 0
+    F0 = np.reshape(estimate.b0, dims[::-1]).T
     for frame in mov:
         frame_index = frames[index]
-        min_denoised_val = 5
-        denoised_gain = 4
-        denoised_frame = (np.reshape(estimate.A * estimate.C[:, frame_index] + min_denoised_val, dims[::-1])) * denoised_gain
+        min_denoised_val = 20
+        denoised_gain = 6
+        denoised_frame = (np.reshape(estimate.A * estimate.C[:, frame_index], dims[::-1])) * denoised_gain + min_denoised_val
         denoised_frame = np.clip(denoised_frame, 0, 255)
         denoised_frame = denoised_frame.T
+        raw_frame = np.clip((frame - minmov) * 255. * gain / (maxmov - minmov), 0, 255)
+        #contours_frame = np.clip((frame - F0) / F0 * 255 + 20, 0, 255)
+        contours_frame = np.clip(4 * (frame - F0 * 0.7), 0, 255)
         if magnification != 1:
-            frame = cv2.resize(frame, None, fx=magnification, fy=magnification,
+            raw_frame = cv2.resize(raw_frame, None, fx=magnification, fy=magnification,
                                interpolation=cv2.INTER_LINEAR)
+            contours_frame = cv2.resize(contours_frame, None, fx=magnification, fy=magnification,
+                                   interpolation=cv2.INTER_LINEAR)
             denoised_frame = cv2.resize(denoised_frame, None, fx=magnification, fy=magnification,
                                interpolation=cv2.INTER_LINEAR)
-        raw_frame = np.clip((frame - minmov) * 255. * gain / (maxmov - minmov), 0, 255)
 
         rgbframe = cv2.cvtColor(raw_frame, cv2.COLOR_GRAY2RGB)
-        contours_frame = np.copy(rgbframe)
+        #contours_frame = np.copy(raw_frame)
+        contours_frame = cv2.cvtColor(contours_frame, cv2.COLOR_GRAY2RGB)
         for contour in contours:
             cv2.drawContours(contours_frame, contour, -1, (0, 255, 255), 1)
         concat_frame = np.concatenate([rgbframe,

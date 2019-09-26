@@ -18,10 +18,13 @@ import caiman as cm
 from caiman.motion_correction import MotionCorrect
 from caiman.source_extraction.cnmf import params as params
 
-
 logging.basicConfig(level=logging.INFO)
+shortRun = False
+rerun = True
 
 session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
+if shortRun:
+    session_fpaths = [session_fpaths[0]]
 subprocess.call(['mkdir', '-p', result_data_dir])
 
 now = datetime.now()
@@ -42,15 +45,14 @@ Ideally, optimize these for your datasets then stick to these values
 
 # dataset dependent parameters
 frate = 20                       # movie frame rate
-decay_time = 0.4                 # length of a typical transient in seconds
 
 # motion correction parameters
 pw_rigid = False         # flag for performing piecewise-rigid motion correction (otherwise just rigid)
-gSig_filt = (3, 3)       # size of high pass spatial filtering, used in 1p data
-max_shifts = (5, 5)      # maximum allowed rigid shift
+gSig_filt = (8, 8)       # size of high pass spatial filtering, used in 1p data
+max_shifts = (12, 12)      # maximum allowed rigid shift
 strides = (48, 48)       # start a new patch for pw-rigid motion correction every x pixels
 overlaps = (16, 16)      # overlap between patches (size of patch strides+overlaps)
-max_deviation_rigid = 3  # maximum deviation allowed for patch with respect to rigid shifts
+max_deviation_rigid = 4  # maximum deviation allowed for patch with respect to rigid shifts
 border_nan = 'copy'      # replicate values along the boundaries
 use_cuda = False         # Set to True in order to use GPU
 only_init_patch = True
@@ -58,11 +60,10 @@ only_init_patch = True
 mc_dict = {
     #'fnames': vid_fpaths,
     'fr': frate,
-    'niter_rig': 1,
-    'splits_rig': 20,  # for parallelization split the movies in  num_splits chuncks across time
+    'niter_rig': 4,
+    'splits_rig': 20,  # for parallelization split the movies in  num_splits chunks across time
     # if none all the splits are processed and the movie is saved
     'num_splits_to_process_rig': None, # intervals at which patches are laid out for motion correction
-    'decay_time': decay_time,
     'pw_rigid': pw_rigid,
     'max_shifts': max_shifts,
     'gSig_filt': gSig_filt,
@@ -158,18 +159,21 @@ def mc_vids(vids_fpath, mc_rigid_template):
 max_bord_px = 0
 mc_rigid_template = None
 rigid_template_fpath = result_data_dir + '/mc_rigid_template'
-if os.path.isfile(rigid_template_fpath + '.npy'):
+if os.path.isfile(rigid_template_fpath + '.npy') and not rerun:
     mc_rigid_template = np.load(rigid_template_fpath + '.npy', mc_rigid_template)
 
 for s_fpath in session_fpaths:
     session_vids = miniscope_file.list_vidfiles(s_fpath)
+    if shortRun:
+        session_vids = [session_vids[0]]
     mc_stats_fpath = miniscope_file.get_timestamped_path(s_fpath) + '/mc_stats.yaml'
 
     # If directory already processed
     memmap_files = miniscope_file.get_memmap_files(s_fpath, pwRigid=doPwRigid)
     if (len(memmap_files) >= len(session_vids)
             and (mc_rigid_template is not None)
-            and (os.path.isfile(mc_stats_fpath))):
+            and (os.path.isfile(mc_stats_fpath)))\
+            and (not rerun):
         continue
 
     print('Aligning session vids:' + str(session_vids))
