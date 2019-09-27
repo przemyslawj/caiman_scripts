@@ -14,12 +14,12 @@ from miniscope_file import gdrive_download_file, load_session_info
 exp_month = '2019-08'
 exp_title = 'habituation'
 exp_date = '2019-08-27'
-animal = 'E-TR'
+animal = 'F-TL'
 rootdir = '/home/przemek/neurodata/'
 gdrive_subdir = 'cheeseboard-down/down_2'
 
 
-vid_index = 1
+vid_index = 2
 session_index = 1
 
 rclone_config = os.environ['RCLONE_CONFIG']
@@ -33,12 +33,15 @@ result_dir = os.path.join(local_dated_dir, 'caiman', animal)
 h5fpath = os.path.join(result_dir, 'analysis_results.hdf5')
 if not os.path.isfile(h5fpath):
     gdrive_download_file(gdrive_result_dir + '/analysis_results.hdf5', result_dir, rclone_config)
+cnm_obj = load_CNMF(h5fpath)
 
 session_info = load_session_info(result_dir, gdrive_result_dir, rclone_config)
 session_lengths = np.cumsum([0] + session_info['session_lengths'])
 session_trace_offset = session_lengths[session_index - 1]
 
-mmap_fname = 'msCam' + str(vid_index) + '_els__d1_240_d2_376_d3_1_order_F_frames_1000_.mmap'
+dims = cnm_obj.estimates.dims
+mmap_prefix = 'els'
+mmap_fname = 'msCam' + str(vid_index) + '_' + mmap_prefix + '__d1_' + str(dims[0]) + '_d2_' + str(dims[1]) + '_d3_1_order_F_frames_1000_.mmap'
 remote_mmap_dir = os.path.dirname(session_info['dat_files'][session_index - 1])
 mmap_session_subdir = remote_mmap_dir.split(exp_date + '/')[1]
 local_mmap_dir = os.path.join(local_dated_dir, mmap_session_subdir)
@@ -49,23 +52,22 @@ if not os.path.isfile(local_mmap_fpath):
     gdrive_download_file(gdrive_mmap_fpath, local_mmap_dir, rclone_config)
 
 # Load results
-cnm_obj = load_CNMF(h5fpath)
 print('loading images')
 images = video.load_images(local_mmap_fpath)
 
 eval_params = {
     'cnn_lowest': .1,
-    'min_cnn_thr': 0.99,
+    'min_cnn_thr': 0.95,
     'rval_thr': 0.85,
-    'rval_lowest': -1,
-    'min_SNR': 8,
-    'SNR_lowest': 0
+    'rval_lowest': 0.5,
+    'min_SNR': 5,
+    'SNR_lowest': 2
 }
 opts = params.CNMFParams(params_dict=eval_params)
 #print('evaluating components')
 #cnm_obj.estimates.evaluate_components(images, opts, dview)
-print(cnm_obj.estimates.idx_components_bad)
-
+print('Bad components: ' + str(cnm_obj.estimates.idx_components_bad))
+print('# Components remained: ' + str(cnm_obj.estimates.nr - len(cnm_obj.estimates.idx_components_bad)))
 
 """ Create movie with the cells activity """
 
