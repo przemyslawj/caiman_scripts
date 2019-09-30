@@ -13,15 +13,15 @@ from miniscope_file import gdrive_download_file, load_session_info
 # Choose video
 exp_month = '2019-08'
 exp_title = 'habituation'
-exp_date = '2019-08-29'
-animal = 'F-TL'
+exp_date = '2019-08-28'
+animal = 'F-BL'
 rootdir = '/home/przemek/neurodata/'
 gdrive_subdir = 'cheeseboard-down/down_2'
 
 
 vid_index = 2
 session_index = 1
-reevaluate = True
+reevaluate = False
 
 rclone_config = os.environ['RCLONE_CONFIG']
 
@@ -64,7 +64,9 @@ eval_params = {
     'SNR_lowest': 2.5
 }
 opts = params.CNMFParams(params_dict=eval_params)
-
+A = cnm_obj.estimates.A
+frames = session_trace_offset + range((vid_index - 1) * 1000, vid_index * 1000)
+images = video.load_images(local_mmap_fpath)
 if reevaluate:
     print('evaluating components')
     from caiman.cluster import setup_cluster
@@ -74,20 +76,23 @@ if reevaluate:
     cnm_obj.estimates.threshold_spatial_components(maxthr=0.5, dview=dview)
     cnm_obj.estimates.remove_small_large_neurons(min_size_neuro=15, max_size_neuro=125)
     cnm_obj.estimates.evaluate_components(all_images, opts, dview)
-    #cnm_obj.estimates.filter_components(all_images, cnm_obj.params, new_dict=eval_params, dview=dview)
     cm.stop_server(dview=dview)
+else:
+    eval_params['use_cnn'] = False
+    cnm_obj.estimates.filter_components(images, cnm_obj.params, new_dict=eval_params)
 
 print('Bad components: ' + str(cnm_obj.estimates.idx_components_bad))
 print('# Components remained: ' + str(cnm_obj.estimates.nr - len(cnm_obj.estimates.idx_components_bad)))
 
 """ Create movie with the cells activity """
 
-
-def save_movie(estimate, imgs, frames, q_max=99.5, q_min=2, gain=0.6,
+# TODO: scale Y_res frame
+def save_movie(estimate, imgs, Y_res, frames, q_max=99.5, q_min=2, gain=0.6,
                magnification=1,
                bpx=0, thr=0.,
                movie_name='results_movie.avi',
-               fr=80):
+               fr=80,
+               discard_bad_components=True):
     dims = imgs.shape[1:]
     if 'movie' not in str(type(imgs)):
         imgs = cm.movie(imgs)
@@ -119,16 +124,18 @@ def save_movie(estimate, imgs, frames, q_max=99.5, q_min=2, gain=0.6,
     maxmov = np.nanpercentile(mov[0:10], q_max) if q_max < 100 else np.nanmax(mov)
     minmov = np.nanpercentile(mov[0:10], q_min) if q_min > 0 else np.nanmin(mov)
     index = 0
-    F0 = np.reshape(estimate.b0, dims[::-1]).T
+    F0 = np.reshape(estimate.b0, dims, order='F')
+    components = range(estimate.A.shape[1])
+    if discard_bad_components:
+        components = estimate.idx_components
+    A = estimate.A[:,components]
     for frame in mov:
         frame_index = frames[index]
         min_denoised_val = 30
-        denoised_gain = 6
-        denoised_frame = (np.reshape(estimate.A * estimate.C[:, frame_index], dims[::-1])) * denoised_gain + min_denoised_val
+        denoised_gain = 12
+        denoised_frame = (np.reshape(A * estimate.C[components, frame_index], dims, order='F')) * denoised_gain + min_denoised_val
         denoised_frame = np.clip(denoised_frame, 0, 255)
-        denoised_frame = denoised_frame.T
         raw_frame = np.clip((frame - minmov) * 255. * gain / (maxmov - minmov), 0, 255)
-        #contours_frame = np.clip((frame - F0) / F0 * 255 + 20, 0, 255)
         contours_frame = np.clip(4 * (frame - F0 * 0.7), 0, 255)
         if magnification != 1:
             raw_frame = cv2.resize(raw_frame, None, fx=magnification, fy=magnification,
@@ -137,9 +144,20 @@ def save_movie(estimate, imgs, frames, q_max=99.5, q_min=2, gain=0.6,
                                    interpolation=cv2.INTER_LINEAR)
             denoised_frame = cv2.resize(denoised_frame, None, fx=magnification, fy=magnification,
                                interpolation=cv2.INTER_LINEAR)
+        res_frame = cv2.resize(Y_res[:,:,index], dsize=raw_frame.shape[::-1], interpolation=cv2.INTER_LINEAR)
 
+        # Assume residuals should be normaly distributed and show only > 2 std
+        res_frame_thr = np.where(res_frame > 1 * np.std(res_frame), res_frame + min_denoised_val / 5, 0)
+        res_frame_thr = np.clip((res_frame_thr - np.min(res_frame_thr)) * denoised_gain / 2, 0, 255)
+        denoised_frame = np.reshape(denoised_frame, denoised_frame.shape + (-1,))
+        denoised_frame = np.concatenate([denoised_frame,
+                                         denoised_frame,
+                                         np.zeros_like(denoised_frame)],
+                                        axis=2)
+
+        denoised_frame[:, :, 2] = res_frame_thr
         rgbframe = cv2.cvtColor(raw_frame, cv2.COLOR_GRAY2RGB)
-        #contours_frame = np.copy(raw_frame)
+
         contours_frame = cv2.cvtColor(contours_frame, cv2.COLOR_GRAY2RGB)
         for cell_idx in cell_contours.keys():
             yellow_col = (0, 255, 255)
@@ -152,7 +170,7 @@ def save_movie(estimate, imgs, frames, q_max=99.5, q_min=2, gain=0.6,
 
         concat_frame = np.concatenate([rgbframe,
                                        contours_frame,
-                                       cv2.cvtColor(denoised_frame.astype('float32'), cv2.COLOR_GRAY2RGB)],
+                                       denoised_frame],
                                       axis=1)
         #cv2.imshow('frame', concat_frame.astype('uint8'))
         #if cv2.waitKey(30) & 0xFF == ord('q'):
@@ -163,12 +181,10 @@ def save_movie(estimate, imgs, frames, q_max=99.5, q_min=2, gain=0.6,
     out.release()
 
 
-cnm_obj.estimates.W = None
-A = cnm_obj.estimates.A
-frames = session_trace_offset + range((vid_index - 1) * 1000, vid_index * 1000)
+from cnmfe_model import model_residual
+Y_res = model_residual(images, cnm_obj, 2, frames)
 
-images = video.load_images(local_mmap_fpath)
 avifilename = 'Session' + str(session_index) + '_msCam' + str(vid_index) + '_result.avi'
-save_movie(cnm_obj.estimates, images, frames, q_max=75, magnification=2,
+save_movie(cnm_obj.estimates, images, Y_res, frames, q_max=75, magnification=2,
            bpx=0, thr=0.6, gain=0.4,
            movie_name=os.path.join(result_dir, avifilename))

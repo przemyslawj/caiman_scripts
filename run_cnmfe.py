@@ -295,6 +295,9 @@ analysis_end = time.time()
 analysis_duration = analysis_end - analysis_start
 print('Done analyzing. This took a total ' + str(analysis_duration) + ' s')
 
+# Measure residuals of the model
+
+
 # ## Save analysis
 
 def find_centroids(SFP):
