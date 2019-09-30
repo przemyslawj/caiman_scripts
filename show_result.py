@@ -13,7 +13,7 @@ from miniscope_file import gdrive_download_file, load_session_info
 # Choose video
 exp_month = '2019-08'
 exp_title = 'habituation'
-exp_date = '2019-08-27'
+exp_date = '2019-08-29'
 animal = 'F-TL'
 rootdir = '/home/przemek/neurodata/'
 gdrive_subdir = 'cheeseboard-down/down_2'
@@ -21,6 +21,7 @@ gdrive_subdir = 'cheeseboard-down/down_2'
 
 vid_index = 2
 session_index = 1
+reevaluate = True
 
 rclone_config = os.environ['RCLONE_CONFIG']
 
@@ -52,20 +53,30 @@ if not os.path.isfile(local_mmap_fpath):
     gdrive_download_file(gdrive_mmap_fpath, local_mmap_dir, rclone_config)
 
 # Load results
-print('loading images')
-images = video.load_images(local_mmap_fpath)
 
 eval_params = {
     'cnn_lowest': .1,
-    'min_cnn_thr': 0.95,
-    'rval_thr': 0.85,
-    'rval_lowest': 0.5,
-    'min_SNR': 5,
-    'SNR_lowest': 2
+    'min_cnn_thr': 0.9,
+    'use_cnn': True,
+    'rval_thr': 0.8,
+    'rval_lowest': -1.0,
+    'min_SNR': 6,
+    'SNR_lowest': 2.5
 }
 opts = params.CNMFParams(params_dict=eval_params)
-#print('evaluating components')
-#cnm_obj.estimates.evaluate_components(images, opts, dview)
+
+if reevaluate:
+    print('evaluating components')
+    from caiman.cluster import setup_cluster
+    c, dview, n_processes = setup_cluster(backend='local', n_processes=None, single_thread=True)
+    import miniscope_file
+    all_images = video.load_images(miniscope_file.get_joined_memmap_fpath(result_dir))
+    cnm_obj.estimates.threshold_spatial_components(maxthr=0.5, dview=dview)
+    cnm_obj.estimates.remove_small_large_neurons(min_size_neuro=15, max_size_neuro=125)
+    cnm_obj.estimates.evaluate_components(all_images, opts, dview)
+    #cnm_obj.estimates.filter_components(all_images, cnm_obj.params, new_dict=eval_params, dview=dview)
+    cm.stop_server(dview=dview)
+
 print('Bad components: ' + str(cnm_obj.estimates.idx_components_bad))
 print('# Components remained: ' + str(cnm_obj.estimates.nr - len(cnm_obj.estimates.idx_components_bad)))
 
@@ -86,7 +97,8 @@ def save_movie(estimate, imgs, frames, q_max=99.5, q_min=2, gain=0.6,
     out_vid_shape = [int(magnification * s) for s in mov.shape[1:][::-1]]
     out_vid_shape[0] *= 3 # Three vids are horizontally stacked
     out = cv2.VideoWriter(movie_name, fourcc, fr, tuple(out_vid_shape))
-    contours = []
+    cell_contours = dict()
+    cell_idx = 0
     for a in estimate.A.T.toarray():
         a = a.reshape(dims, order='F')
         if bpx > 0:
@@ -97,9 +109,12 @@ def save_movie(estimate, imgs, frames, q_max=99.5, q_min=2, gain=0.6,
         ret, thresh = cv2.threshold(a, thr * np.max(a), 1., 0)
         contour, hierarchy = cv2.findContours(
             thresh.astype('uint8'), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours = []
         contours.append(contour)
         contours.append(list([c + np.array([[a.shape[1], 0]]) for c in contour]))
         contours.append(list([c + np.array([[2 * a.shape[1], 0]]) for c in contour]))
+        cell_contours[cell_idx] = contours
+        cell_idx += 1
 
     maxmov = np.nanpercentile(mov[0:10], q_max) if q_max < 100 else np.nanmax(mov)
     minmov = np.nanpercentile(mov[0:10], q_min) if q_min > 0 else np.nanmin(mov)
@@ -107,7 +122,7 @@ def save_movie(estimate, imgs, frames, q_max=99.5, q_min=2, gain=0.6,
     F0 = np.reshape(estimate.b0, dims[::-1]).T
     for frame in mov:
         frame_index = frames[index]
-        min_denoised_val = 20
+        min_denoised_val = 30
         denoised_gain = 6
         denoised_frame = (np.reshape(estimate.A * estimate.C[:, frame_index], dims[::-1])) * denoised_gain + min_denoised_val
         denoised_frame = np.clip(denoised_frame, 0, 255)
@@ -126,8 +141,15 @@ def save_movie(estimate, imgs, frames, q_max=99.5, q_min=2, gain=0.6,
         rgbframe = cv2.cvtColor(raw_frame, cv2.COLOR_GRAY2RGB)
         #contours_frame = np.copy(raw_frame)
         contours_frame = cv2.cvtColor(contours_frame, cv2.COLOR_GRAY2RGB)
-        for contour in contours:
-            cv2.drawContours(contours_frame, contour, -1, (0, 255, 255), 1)
+        for cell_idx in cell_contours.keys():
+            yellow_col = (0, 255, 255)
+            red_col = (0, 0, 255)
+            contour_col = yellow_col
+            if cell_idx in cnm_obj.estimates.idx_components_bad:
+                contour_col = red_col
+            for contour in cell_contours[cell_idx]:
+                cv2.drawContours(contours_frame, contour, -1, contour_col, 1)
+
         concat_frame = np.concatenate([rgbframe,
                                        contours_frame,
                                        cv2.cvtColor(denoised_frame.astype('float32'), cv2.COLOR_GRAY2RGB)],
@@ -145,6 +167,7 @@ cnm_obj.estimates.W = None
 A = cnm_obj.estimates.A
 frames = session_trace_offset + range((vid_index - 1) * 1000, vid_index * 1000)
 
+images = video.load_images(local_mmap_fpath)
 avifilename = 'Session' + str(session_index) + '_msCam' + str(vid_index) + '_result.avi'
 save_movie(cnm_obj.estimates, images, frames, q_max=75, magnification=2,
            bpx=0, thr=0.6, gain=0.4,

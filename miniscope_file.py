@@ -57,8 +57,11 @@ def get_memmap_files(s_fpath, pwRigid=False, prefix='msCam'):
 
 
 def get_joined_memmap_fpath(result_data_dir):
-    return [result_data_dir + '/' + f for f in os.listdir(result_data_dir)
-                    if f.startswith('memmap') and f.endswith('.mmap')][0]
+    fs = [result_data_dir + '/' + f for f in os.listdir(result_data_dir)
+                    if f.startswith('memmap') and f.endswith('.mmap')]
+    if len(fs) == 0:
+        raise FileNotFoundError('No memmap file found at ' + result_data_dir)
+    return fs[0]
 
 
 def gdrive_download_file(gdrive_fpath, local_dir, rclone_config):

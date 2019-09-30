@@ -136,6 +136,7 @@ p = 1               # order of the autoregressive system
 K = None            # upper bound on number of components per patch, in general None for 1p data
 gSig = (3, 3)       # gaussian width of a 2D gaussian kernel, which approximates a neuron
 gSiz = (13, 13)     # average diameter of a neuron, in general 4*gSig+1
+
 Ain = None          # possibility to seed with predetermined binary masks
 merge_thr = .7      # merging threshold, max correlation allowed
 rf = 40             # half-size of the patches in pixels. e.g., if rf=40, patches are 80x80
@@ -155,10 +156,10 @@ gnb = 0             # number of background components (rank) if positive,
 #                         gnb<-1: Don't return background
 nb_patch = 0        # number of background components (rank) per patch if gnb>0,
 #                     else it is set automatically
-min_corr = .8       # min peak value from correlation image
-min_pnr = 10        # min peak to noise ration from PNR image
+min_corr = .65       # min peak value from correlation image
+min_pnr = 8        # min peak to noise ration from PNR image
 ssub_B = 2          # additional downsampling factor in space for background
-ring_size_factor = 1.4  # radius of ring is gSiz*ring_size_factor
+ring_size_factor = 1.6  # radius of ring is gSiz*ring_size_factor
 
 opts.change_params(params_dict={'dims': dims,
                                 'method_init': 'corr_pnr',  # use this for 1 photon
@@ -284,11 +285,31 @@ else:
 # Save summary figure
 plt.savefig(result_data_dir + '/' + 'summary_figure.svg', edgecolor='w', format='svg', transparent=True)
 
-# ## Register the timestamps for analysis
+"""# Save the results in HDF5 format"""
+
+save_hdf5 = True
+if save_hdf5:
+    cnm.save(result_data_dir + '/analysis_results.hdf5')
+
+analysis_end = time.time()
+analysis_duration = analysis_end - analysis_start
+print('Done analyzing. This took a total ' + str(analysis_duration) + ' s')
+
+# ## Save analysis
+
+def find_centroids(SFP):
+    centroids = []
+    for cell in range(SFP.shape[2]):
+        footprint = SFP[:,:,cell]
+        max_val = np.max(footprint)
+        x, y = np.where(footprint > max_val / 3)
+        centroids.append((int(np.median(x)), int(np.median(y))))
+    return centroids
+
+# ## Register the timestamps
 with open(result_data_dir + '/session_info.yaml', 'r') as f:
     session_info = yaml.load(f, Loader=yaml.FullLoader)
 mstime = np.array([], dtype=np.int)
-
 i = 0
 for dat_file in session_info['dat_files']:
     with open(dat_file) as f:
@@ -301,32 +322,6 @@ for dat_file in session_info['dat_files']:
     i += 1
 
 mstime[0] = 0
-
-analysis_end = time.time()
-analysis_duration = analysis_end - analysis_start
-print('Done analyzing. This took a total ' + str(analysis_duration) + ' s')
-
-# ## Save analysis
-
-# In[ ]:
-
-
-"""# Save the results in HDF5 format"""
-
-save_hdf5 = True
-if save_hdf5:
-    cnm.save(result_data_dir + '/analysis_results.hdf5')
-
-
-def find_centroids(SFP):
-    centroids = []
-    for cell in range(SFP.shape[2]):
-        footprint = SFP[:,:,cell]
-        max_val = np.max(footprint)
-        x, y = np.where(footprint > max_val / 3)
-        centroids.append((int(np.median(x)), int(np.median(y))))
-    return centroids
-
 
 meanFrame = np.mean(images[::100], axis=0)
 """# Save the results in Matlab format"""
