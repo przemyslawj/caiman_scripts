@@ -160,7 +160,7 @@ max_bord_px = 0
 mc_rigid_template = None
 rigid_template_fpath = result_data_dir + '/mc_rigid_template'
 if os.path.isfile(rigid_template_fpath + '.npy') and not rerun:
-    mc_rigid_template = np.load(rigid_template_fpath + '.npy', mc_rigid_template)
+    mc_rigid_template = np.load(rigid_template_fpath + '.npy')
 
 for s_fpath in session_fpaths:
     session_vids = miniscope_file.list_vidfiles(s_fpath)
