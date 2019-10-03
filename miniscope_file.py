@@ -1,11 +1,13 @@
+import logging
 import os
 import re
 import yaml
 
 def list_session_dirs(src_miniscope_path, animal_name):
     session_dirs = []
-    for exp_subdir in os.listdir(src_miniscope_path):
-        if exp_subdir.startswith('caiman'):
+    exp_subdirs = ['trial', 'homecage', 'test']
+    for exp_subdir in exp_subdirs:
+        if not os.path.isdir(os.path.join(src_miniscope_path, exp_subdir)):
             continue
         sessions_rootdir = '/'.join([src_miniscope_path, exp_subdir, 'mv_caimg', animal_name])
         if os.path.isdir(sessions_rootdir):
@@ -66,10 +68,14 @@ def get_joined_memmap_fpath(result_data_dir):
 
 def gdrive_download_file(gdrive_fpath, local_dir, rclone_config):
     import subprocess
+    logging.info('Downloading file: ' + gdrive_fpath + ' to: ' + local_dir)
     subprocess.run(['mkdir', '-p', local_dir])
-    subprocess.run(['rclone', 'copy', '-P', '--config', 'env/rclone.conf',
-                    rclone_config + ':' + gdrive_fpath,
-                    local_dir])
+    cp = subprocess.run(['rclone', 'copy', '-P', '--config', 'env/rclone.conf',
+                        rclone_config + ':' + gdrive_fpath,
+                        local_dir], capture_output=True, text=True)
+    if cp.returncode != 0:
+        logging.error('Failed to download: ' + gdrive_fpath + ' error: ' + str(cp.stderr))
+
 
 def load_session_info(result_dir, gdrive_result_dir, rclone_config):
     session_info_fpath = os.path.join(result_dir, 'session_info.yaml')
