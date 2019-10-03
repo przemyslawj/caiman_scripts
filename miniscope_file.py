@@ -83,3 +83,11 @@ def load_session_info(result_dir, gdrive_result_dir, rclone_config):
         gdrive_download_file(gdrive_result_dir + '/session_info.yaml', result_dir, rclone_config)
     with open(session_info_fpath, 'r') as f:
         return yaml.load(f, Loader=yaml.FullLoader)
+
+def load_hdf5_result(result_dir, gdrive_result_dir, rclone_config):
+    h5fpath = os.path.join(result_dir, 'analysis_results.hdf5')
+    if not os.path.isfile(h5fpath):
+        gdrive_download_file(gdrive_result_dir + '/analysis_results.hdf5', result_dir, rclone_config)
+
+    from caiman.source_extraction.cnmf.cnmf import load_CNMF
+    return load_CNMF(h5fpath)

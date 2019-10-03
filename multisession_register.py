@@ -1,17 +1,16 @@
 import itertools
 import os
 from caiman.base.rois import register_multisession, register_ROIs, com
-from caiman.source_extraction.cnmf.cnmf import load_CNMF
 from matplotlib import pyplot as plt
 import numpy as np
 
-from miniscope_file import gdrive_download_file, load_session_info
+from miniscope_file import gdrive_download_file, load_session_info, load_hdf5_result
 
 # Choose sessions
 exp_month = '2019-08'
 exp_title = 'habituation'
 exp_dates = ['2019-08-27', '2019-08-28', '2019-08-29']
-animal = 'F-TL'
+animal = 'E-BL'
 rootdir = '/home/przemek/neurodata/'
 gdrive_subdir = 'cheeseboard-down/down_2'
 
@@ -26,10 +25,7 @@ for exp_date in exp_dates:
     result_dir = os.path.join(local_dated_dir, 'caiman', animal)
     gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal)
 
-    h5fpath = os.path.join(result_dir, 'analysis_results.hdf5')
-    if not os.path.isfile(h5fpath):
-        gdrive_download_file(gdrive_result_dir + '/analysis_results.hdf5', result_dir, rclone_config)
-    cnm_obj = load_CNMF(h5fpath)
+    cnm_obj = load_hdf5_result(result_dir, gdrive_result_dir, rclone_config)
     cnm_list.append(cnm_obj)
     spatial.append(cnm_obj.estimates.A.copy())
 

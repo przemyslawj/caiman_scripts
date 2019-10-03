@@ -11,7 +11,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-from miniscope_file import gdrive_download_file, load_session_info
+from miniscope_file import gdrive_download_file, load_session_info, load_hdf5_result
 
 # Choose video
 exp_month = '2019-08'
@@ -34,10 +34,7 @@ local_dated_dir = os.path.join(rootdir, gdrive_dated_dir)
 gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal)
 result_dir = os.path.join(local_dated_dir, 'caiman', animal)
 # Download result files if not stored locally
-h5fpath = os.path.join(result_dir, 'analysis_results.hdf5')
-if not os.path.isfile(h5fpath):
-    gdrive_download_file(gdrive_result_dir + '/analysis_results.hdf5', result_dir, rclone_config)
-cnm_obj = load_CNMF(h5fpath)
+cnm_obj = load_hdf5_result(result_dir, gdrive_result_dir, rclone_config)
 
 session_info = load_session_info(result_dir, gdrive_result_dir, rclone_config)
 session_lengths = np.cumsum([0] + session_info['session_lengths'])

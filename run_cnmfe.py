@@ -9,7 +9,6 @@ import time
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 mpl.style.use('default')
-import scipy.io as sio
 import yaml
 import logging
 
@@ -300,32 +299,6 @@ print('Done analyzing. This took a total ' + str(analysis_duration) + ' s')
 
 # ## Save analysis
 
-def find_centroids(SFP):
-    centroids = []
-    for cell in range(SFP.shape[2]):
-        footprint = SFP[:,:,cell]
-        max_val = np.max(footprint)
-        x, y = np.where(footprint > max_val / 3)
-        centroids.append((int(np.median(x)), int(np.median(y))))
-    return centroids
-
-# ## Register the timestamps
-with open(result_data_dir + '/session_info.yaml', 'r') as f:
-    session_info = yaml.load(f, Loader=yaml.FullLoader)
-mstime = np.array([], dtype=np.int)
-i = 0
-for dat_file in session_info['dat_files']:
-    with open(dat_file) as f:
-        camNum, frameNum, sysClock, buffer = np.loadtxt(f, dtype='float', comments='#', skiprows=1, unpack=True)
-    camNumber = camNum[0]
-    mstime_idx = np.where(camNum == camNumber)
-    this_mstime = sysClock[mstime_idx]
-    this_mstime = this_mstime[0:session_info['session_lengths'][i]]
-    mstime = np.concatenate([mstime, this_mstime])
-    i += 1
-
-mstime[0] = 0
-
 meanFrame = np.mean(images[::100], axis=0)
 """# Save the results in Matlab format"""
 save_mat = True
@@ -358,10 +331,6 @@ if save_mat:
         'numNeurons': SFP_dims[2],
         # 'analysis_duration': analysis_duration
     }
-
-    SFPperm = np.transpose(SFP, [2, 0, 1])
-    sio.savemat(result_data_dir + '/SFP.mat', {'SFP': SFPperm})
-    sio.savemat(result_data_dir + '/ms.mat', {'ms': results_dict})
 
 # Stop the cluster
 cm.stop_server(dview=dview)
