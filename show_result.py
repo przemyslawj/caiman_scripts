@@ -7,14 +7,17 @@ import numpy as np
 import os
 
 import video
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 from miniscope_file import gdrive_download_file, load_session_info
 
 # Choose video
 exp_month = '2019-08'
 exp_title = 'habituation'
-exp_date = '2019-08-28'
-animal = 'F-BL'
+exp_date = '2019-08-27'
+animal = 'E-TR'
 rootdir = '/home/przemek/neurodata/'
 gdrive_subdir = 'cheeseboard-down/down_2'
 
@@ -67,19 +70,22 @@ opts = params.CNMFParams(params_dict=eval_params)
 A = cnm_obj.estimates.A
 frames = session_trace_offset + range((vid_index - 1) * 1000, vid_index * 1000)
 images = video.load_images(local_mmap_fpath)
+cnm_obj.estimates.threshold_spatial_components(maxthr=0.5)
+cnm_obj.estimates.remove_small_large_neurons(min_size_neuro=20, max_size_neuro=110)
+idx_components_bad = cnm_obj.estimates.idx_components_bad
 if reevaluate:
     print('evaluating components')
     from caiman.cluster import setup_cluster
     c, dview, n_processes = setup_cluster(backend='local', n_processes=None, single_thread=True)
     import miniscope_file
     all_images = video.load_images(miniscope_file.get_joined_memmap_fpath(result_dir))
-    cnm_obj.estimates.threshold_spatial_components(maxthr=0.5, dview=dview)
-    cnm_obj.estimates.remove_small_large_neurons(min_size_neuro=15, max_size_neuro=125)
     cnm_obj.estimates.evaluate_components(all_images, opts, dview)
     cm.stop_server(dview=dview)
 else:
     eval_params['use_cnn'] = False
     cnm_obj.estimates.filter_components(images, cnm_obj.params, new_dict=eval_params)
+cnm_obj.estimates.idx_components_bad = sorted(np.union1d(cnm_obj.estimates.idx_components_bad, idx_components_bad))
+cnm_obj.estimates.idx_components = sorted(np.setdiff1d(np.arange(cnm_obj.estimates.A.shape[-1]), cnm_obj.estimates.idx_components_bad))
 
 print('Bad components: ' + str(cnm_obj.estimates.idx_components_bad))
 print('# Components remained: ' + str(cnm_obj.estimates.nr - len(cnm_obj.estimates.idx_components_bad)))

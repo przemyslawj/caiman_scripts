@@ -156,7 +156,7 @@ gnb = 0             # number of background components (rank) if positive,
 #                         gnb<-1: Don't return background
 nb_patch = 0        # number of background components (rank) per patch if gnb>0,
 #                     else it is set automatically
-min_corr = .65       # min peak value from correlation image
+min_corr = .75     # min peak value from correlation image
 min_pnr = 8        # min peak to noise ration from PNR image
 ssub_B = 2          # additional downsampling factor in space for background
 ring_size_factor = 1.6  # radius of ring is gSiz*ring_size_factor
