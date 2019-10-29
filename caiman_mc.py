@@ -58,10 +58,10 @@ use_cuda = False         # Set to True in order to use GPU
 only_init_patch = True
 
 mc_dict = {
-    #'fnames': vid_fpaths,
     'fr': frate,
     'niter_rig': 4,
-    'splits_rig': 20,  # for parallelization split the movies in  num_splits chunks across time
+    'splits_rig': 2,  # This is to avoid error with empty splits on small videos
+    'splits_els': 2,  # This is to avoid error with empty splits on small videos
     # if none all the splits are processed and the movie is saved
     'num_splits_to_process_rig': None, # intervals at which patches are laid out for motion correction
     'pw_rigid': pw_rigid,
@@ -72,8 +72,8 @@ mc_dict = {
     'max_deviation_rigid': max_deviation_rigid,
     'border_nan': border_nan,
     'use_cuda' : use_cuda,
-    'only_init_patch' : only_init_patch,
-    'memory_fact': 1.0
+    'only_init_patch': only_init_patch,
+    'memory_fact': 1.0,
 }
 
 opts = params.CNMFParams(params_dict=mc_dict)
