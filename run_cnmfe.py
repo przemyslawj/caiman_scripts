@@ -16,6 +16,9 @@ import caiman as cm
 from caiman.source_extraction import cnmf
 from caiman.source_extraction.cnmf import params as params
 
+import results_format
+
+
 logging.basicConfig(level=logging.INFO)
 session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
 
@@ -215,18 +218,7 @@ print('Number of accepted components: ', len(cnm.estimates.idx_components))
 
 # ## Plot results
 neuronsToPlot = 20
-DeconvTraces = cnm.estimates.S
-RawTraces = cnm.estimates.C
-SFP = cnm.estimates.A
-SFP_dims = list(dims)
-SFP_dims.append(SFP.shape[1])
-print('Spatial foootprints dimensions (height x width x neurons): ' + str(SFP_dims))
-
-numNeurons = SFP_dims[2]
-
-SFP = np.reshape(SFP.toarray(), SFP_dims, order='F')
-
-maxRawTraces = np.amax(RawTraces)
+maxRawTraces = np.amax()
 
 plt.figure(figsize=(30, 15))
 plt.subplot(3, 4, 9)
@@ -239,7 +231,7 @@ plt.imshow(pnr)
 plt.colorbar()
 plt.title('PNR')
 plt.subplot(3, 4, 10)
-plt.imshow(np.amax(SFP, axis=2))
+plt.imshow(np.amax(results_format.readSFP(cnm), axis=2))
 plt.colorbar()
 plt.title('Spatial footprints')
 
@@ -247,6 +239,8 @@ plt.subplot(2, 2, 2)
 plt.figure
 plt.title('Example traces (first 50 cells)')
 plot_gain = 10  # To change the value gain of traces
+RawTraces = cnm.estimates.C
+numNeurons = cnm.estimates.A.shape[1]
 if numNeurons >= neuronsToPlot:
     for i in range(neuronsToPlot):
         if i == 0:
@@ -265,6 +259,7 @@ else:
 plt.subplot(2, 2, 4)
 plt.figure
 plt.title('Deconvolved traces (first 50 cells)')
+DeconvTraces = cnm.estimates.S
 plot_gain = 20  # To change the value gain of traces
 if numNeurons >= neuronsToPlot:
     for i in range(neuronsToPlot):
@@ -294,43 +289,15 @@ analysis_end = time.time()
 analysis_duration = analysis_end - analysis_start
 print('Done analyzing. This took a total ' + str(analysis_duration) + ' s')
 
-# Measure residuals of the model
-
-
 # ## Save analysis
+# ## Register the timestamps
+with open(result_data_dir + '/session_info.yaml', 'r') as f:
+    session_info = yaml.load(f, Loader=yaml.FullLoader)
 
-meanFrame = np.mean(images[::100], axis=0)
 """# Save the results in Matlab format"""
 save_mat = True
 if save_mat:
-    from scipy.io import savemat
-
-    results_dict = {
-        # 'dirName': path_to_analyze,
-        'Experiment': animal_name,
-        'numFiles': 1,
-        'framesNum': len(RawTraces[1]),
-        'maxFramesPerFile': 1000,
-        'height': dims[0],
-        'width': dims[1],
-        'camNumber': camNumber,
-        'time': mstime,
-        'sessionLengths': session_info['session_lengths'],
-        # 'analysis_time': analysis_time,
-        'meanFrame': meanFrame,
-        'Centroids': find_centroids(SFP),
-        'CorrProj': cn_filter,
-        'PeakToNoiseProj': pnr,
-        'PNR': cnm.estimates.SNR_comp, # Calculated Peak-to-Noise ratios
-        'cnn_preds': cnm.estimates.cnn_preds, # CNN prediction probability
-        'neurons_sn': cnm.estimates.neurons_sn, # neurons noise estimation
-        'RawTraces': RawTraces.conj().transpose(),  # swap time x neurons dimensions
-        # 'FiltTraces': cnm.estimates.F_dff,
-        'DeconvTraces': cnm.estimates.S.conj().transpose(),
-        'SFPs': SFP,
-        'numNeurons': SFP_dims[2],
-        # 'analysis_duration': analysis_duration
-    }
+    results_format.save_matlab(cnm, session_info, result_data_dir, images[::100])
 
 # Stop the cluster
 cm.stop_server(dview=dview)

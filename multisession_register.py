@@ -1,17 +1,21 @@
 import itertools
 import os
 from caiman.base.rois import register_multisession, register_ROIs, com
+from caiman.source_extraction.cnmf.cnmf import load_CNMF
 from matplotlib import pyplot as plt
 import numpy as np
 
-from miniscope_file import gdrive_download_file, load_session_info, load_hdf5_result
+from miniscope_file import gdrive_download_file, load_session_info
 
 # Choose sessions
 exp_month = '2019-08'
-exp_title = 'habituation'
-exp_dates = ['2019-08-27', '2019-08-28', '2019-08-29']
-animal = 'E-BL'
-rootdir = '/home/przemek/neurodata/'
+exp_title_dates = {
+    'habituation': ['2019-08-27', '2019-08-28', '2019-08-29'],
+    #'learning': ['2019-08-30']
+}
+
+animal = 'F-TL'
+rootdir = '/mnt/DATA/Prez/caiman_instance/Prez/'
 gdrive_subdir = 'cheeseboard-down/down_2'
 
 rclone_config = os.environ['RCLONE_CONFIG']
@@ -19,21 +23,26 @@ rclone_config = os.environ['RCLONE_CONFIG']
 spatial = []
 templates = []
 cnm_list = []
-for exp_date in exp_dates:
-    gdrive_dated_dir = os.path.join(gdrive_subdir, exp_month, exp_title, exp_date)
-    local_dated_dir = os.path.join(rootdir, gdrive_dated_dir)
-    result_dir = os.path.join(local_dated_dir, 'caiman', animal)
-    gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal)
+for exp_title in exp_title_dates.keys():
+    exp_dates = exp_title_dates[exp_title]
+    for exp_date in exp_dates:
+        gdrive_dated_dir = os.path.join(gdrive_subdir, exp_month, exp_title, exp_date)
+        local_dated_dir = os.path.join(rootdir, gdrive_dated_dir)
+        result_dir = os.path.join(local_dated_dir, 'caiman', animal)
+        gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal)
 
-    cnm_obj = load_hdf5_result(result_dir, gdrive_result_dir, rclone_config)
-    cnm_list.append(cnm_obj)
-    spatial.append(cnm_obj.estimates.A.copy())
+        h5fpath = os.path.join(result_dir, 'analysis_results.hdf5')
+        if not os.path.isfile(h5fpath):
+            gdrive_download_file(gdrive_result_dir + '/analysis_results.hdf5', result_dir, rclone_config)
+        cnm_obj = load_CNMF(h5fpath)
+        cnm_list.append(cnm_obj)
+        spatial.append(cnm_obj.estimates.A.copy())
 
-    rigid_template_fpath = result_dir + '/mc_rigid_template.npy'
-    if not os.path.isfile(rigid_template_fpath):
-        gdrive_download_file(gdrive_result_dir + '/mc_rigid_template.npy', result_dir, rclone_config)
-    templates.append(np.load(rigid_template_fpath))
-    dims = cnm_obj.dims
+        rigid_template_fpath = result_dir + '/mc_rigid_template.npy'
+        if not os.path.isfile(rigid_template_fpath):
+            gdrive_download_file(gdrive_result_dir + '/mc_rigid_template.npy', result_dir, rclone_config)
+        templates.append(np.load(rigid_template_fpath))
+        dims = cnm_obj.dims
 
 max_thr = 0.5
 thresh_cost = 0.75

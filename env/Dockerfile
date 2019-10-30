@@ -28,5 +28,5 @@ RUN git clone --depth 1 https://github.com/przemyslawj/caiman_scripts.git
 COPY rclone.conf caiman_scripts/env/rclone.conf
 
 WORKDIR /src/caiman_scripts
-ENTRYPOINT ["./pipeline.sh"]
+#ENTRYPOINT ["./pipeline.sh"]
 

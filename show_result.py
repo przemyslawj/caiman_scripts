@@ -15,10 +15,11 @@ from miniscope_file import gdrive_download_file, load_session_info, load_hdf5_re
 
 # Choose video
 exp_month = '2019-08'
-exp_title = 'habituation'
-exp_date = '2019-08-27'
-animal = 'E-TR'
-rootdir = '/home/przemek/neurodata/'
+exp_title = 'learning'
+exp_date = '2019-08-30'
+animal = 'F-TL'
+#rootdir = '/home/przemek/neurodata/'
+rootdir = '/mnt/DATA/Prez/caiman_instance/Prez/'
 gdrive_subdir = 'cheeseboard-down/down_2'
 
 
