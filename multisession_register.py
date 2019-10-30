@@ -1,41 +1,49 @@
 import itertools
-import os
+import logging
+import numpy as np
+
 from caiman.base.rois import register_multisession, register_ROIs, com
 from caiman.source_extraction.cnmf.cnmf import load_CNMF
 from matplotlib import pyplot as plt
-import numpy as np
 
-from miniscope_file import gdrive_download_file, load_session_info
+from miniscope_file import gdrive_download_file
+from load_args import *
+
+logging.basicConfig(level=logging.INFO)
 
 # Choose sessions
-exp_month = '2019-08'
+experiment_month = '2019-08'
 exp_title_dates = {
     'habituation': ['2019-08-27', '2019-08-28', '2019-08-29'],
-    #'learning': ['2019-08-30']
+    'learning': ['2019-08-30']
 }
 
-animal = 'F-TL'
-rootdir = '/mnt/DATA/Prez/caiman_instance/Prez/'
-gdrive_subdir = 'cheeseboard-down/down_2'
+animal = 'E-BL'
 
-rclone_config = os.environ['RCLONE_CONFIG']
+filteredComponents = True
 
 spatial = []
 templates = []
 cnm_list = []
+cnm_titles = []
 for exp_title in exp_title_dates.keys():
     exp_dates = exp_title_dates[exp_title]
     for exp_date in exp_dates:
-        gdrive_dated_dir = os.path.join(gdrive_subdir, exp_month, exp_title, exp_date)
-        local_dated_dir = os.path.join(rootdir, gdrive_dated_dir)
+        gdrive_dated_dir = os.path.join(downsample_subpath, experiment_month, exp_title, exp_date)
+        local_dated_dir = os.path.join(local_rootdir, gdrive_dated_dir)
         result_dir = os.path.join(local_dated_dir, 'caiman', animal)
         gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal)
 
-        h5fpath = os.path.join(result_dir, 'analysis_results.hdf5')
+        analysis_results_fname = 'analysis_results.hdf5'
+        if filteredComponents:
+            analysis_results_fname = os.path.join('filtered', 'analysis_results_filtered.hdf5')
+        h5fpath = os.path.join(result_dir, analysis_results_fname)
         if not os.path.isfile(h5fpath):
-            gdrive_download_file(gdrive_result_dir + '/analysis_results.hdf5', result_dir, rclone_config)
+            gdrive_download_file(os.path.join(gdrive_result_dir, analysis_results_fname),
+                                 os.path.dirname(h5fpath), rclone_config)
         cnm_obj = load_CNMF(h5fpath)
         cnm_list.append(cnm_obj)
+        cnm_titles.append(exp_title + '_' + exp_date)
         spatial.append(cnm_obj.estimates.A.copy())
 
         rigid_template_fpath = result_dir + '/mc_rigid_template.npy'
@@ -45,7 +53,7 @@ for exp_title in exp_title_dates.keys():
         dims = cnm_obj.dims
 
 max_thr = 0.5
-thresh_cost = 0.75
+thresh_cost = 0.7
 max_dist = 10
 spatial_union, assignments, mappings = register_multisession(A=spatial, dims=dims, templates=templates,
                                                              thresh_cost=thresh_cost,
@@ -65,6 +73,7 @@ spatial_union, assignments, mappings = register_multisession(A=spatial, dims=dim
 pairs = list(itertools.combinations(range(len(templates)), 2))
 for pair in pairs:
     plt.figure()
+    plt.suptitle(cnm_titles[pair[0]] + ' vs ' + cnm_titles[pair[1]])
     match_1, match_2, non_1, non_, perf_, A2 = register_ROIs(spatial[pair[0]], spatial[pair[1]], dims,
                                                             template1=templates[pair[0]],
                                                             template2=templates[pair[1]],
@@ -72,7 +81,7 @@ for pair in pairs:
                                                             max_thr=max_thr,
                                                             thresh_cost=thresh_cost,
                                                             max_dist=max_dist,
-                                                            Cn=templates[-1])
+                                                            Cn=templates[pair[0]])
 
     # Calculate centroid distances for the matched cells
     cm_1 = com(spatial[pair[0]], dims[0], dims[1])[match_1]

@@ -1,7 +1,9 @@
 import logging
 import os
 import re
+import subprocess
 import yaml
+
 
 def list_session_dirs(src_miniscope_path, animal_name):
     session_dirs = []
@@ -67,7 +69,6 @@ def get_joined_memmap_fpath(result_data_dir):
 
 
 def gdrive_download_file(gdrive_fpath, local_dir, rclone_config):
-    import subprocess
     logging.info('Downloading file: ' + gdrive_fpath + ' to: ' + local_dir)
     subprocess.run(['mkdir', '-p', local_dir])
     cp = subprocess.run(['rclone', 'copy', '-P', '--config', 'env/rclone.conf',
@@ -75,6 +76,16 @@ def gdrive_download_file(gdrive_fpath, local_dir, rclone_config):
                         local_dir], capture_output=True, text=True)
     if cp.returncode != 0:
         logging.error('Failed to download: ' + gdrive_fpath + ' error: ' + str(cp.stderr))
+
+
+def gdrive_upload_file(local_fpath, gdrive_dir, rclone_config):
+    logging.info('Uploading file: ' + local_fpath + ' to: ' + gdrive_dir)
+    cp = subprocess.run(['rclone', 'copy', '-P', '--config', 'env/rclone.conf',
+                         local_fpath,
+                         rclone_config + ':' + gdrive_dir],
+                        capture_output=True, text=True)
+    if cp.returncode != 0:
+        logging.error('Failed to upload to: ' + gdrive_dir + ' error: ' + str(cp.stderr))
 
 
 def load_session_info(result_dir, gdrive_result_dir, rclone_config):
@@ -91,3 +102,12 @@ def load_hdf5_result(result_dir, gdrive_result_dir, rclone_config):
 
     from caiman.source_extraction.cnmf.cnmf import load_CNMF
     return load_CNMF(h5fpath)
+
+
+def load_msresult(result_dir, gdrive_result_dir, rclone_config):
+    ms_path = os.path.join(result_dir, 'ms.mat')
+    if not os.path.isfile(ms_path):
+        gdrive_download_file(gdrive_result_dir + '/ms.mat', result_dir, rclone_config)
+    from scipy.io import loadmat
+    return loadmat(ms_path)
+

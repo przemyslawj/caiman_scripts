@@ -4,7 +4,6 @@ import caiman as cm
 
 import cv2
 import numpy as np
-import os
 
 import video
 import logging
@@ -12,26 +11,23 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 from miniscope_file import gdrive_download_file, load_session_info, load_hdf5_result
+from load_args import *
 
 # Choose video
 exp_month = '2019-08'
 exp_title = 'learning'
 exp_date = '2019-08-30'
-animal = 'F-TL'
-#rootdir = '/home/przemek/neurodata/'
-rootdir = '/mnt/DATA/Prez/caiman_instance/Prez/'
-gdrive_subdir = 'cheeseboard-down/down_2'
+animal = 'E-TR'
 
 
-vid_index = 2
-session_index = 1
+vid_index = 1
+session_index = 2
 reevaluate = False
 
-rclone_config = os.environ['RCLONE_CONFIG']
 
 """ Prepare data """
-gdrive_dated_dir = os.path.join(gdrive_subdir, exp_month, exp_title, exp_date)
-local_dated_dir = os.path.join(rootdir, gdrive_dated_dir)
+gdrive_dated_dir = os.path.join(downsample_subpath, exp_month, exp_title, exp_date)
+local_dated_dir = os.path.join(local_rootdir, gdrive_dated_dir)
 gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal)
 result_dir = os.path.join(local_dated_dir, 'caiman', animal)
 # Download result files if not stored locally
@@ -49,7 +45,7 @@ mmap_session_subdir = remote_mmap_dir.split(exp_date + '/')[1]
 local_mmap_dir = os.path.join(local_dated_dir, mmap_session_subdir)
 local_mmap_fpath = os.path.join(local_mmap_dir, mmap_fname)
 if not os.path.isfile(local_mmap_fpath):
-    gdrive_mmap_dir = '/'.join([gdrive_subdir, exp_month, exp_title, exp_date, mmap_session_subdir])
+    gdrive_mmap_dir = '/'.join([downsample_subpath, exp_month, exp_title, exp_date, mmap_session_subdir])
     gdrive_mmap_fpath = os.path.join(gdrive_mmap_dir, mmap_fname)
     gdrive_download_file(gdrive_mmap_fpath, local_mmap_dir, rclone_config)
 

@@ -1,15 +1,12 @@
 import numpy as np
+import os
 from scipy.io import savemat
+from scipy.ndimage import center_of_mass
 
+from miniscope_file import gdrive_download_file
 
 def find_centroids(SFP):
-    centroids = []
-    for cell in range(SFP.shape[2]):
-        footprint = SFP[:,:,cell]
-        max_val = np.max(footprint)
-        x, y = np.where(footprint > max_val / 3)
-        centroids.append((int(np.median(x)), int(np.median(y))))
-    return centroids
+    return [center_of_mass(SFP[:, :, ii]) for ii in range(SFP.shape[2])]
 
 
 def readSFP(cnm):
@@ -20,10 +17,14 @@ def readSFP(cnm):
     return SFP
 
 
-def concat_session_timestamps(session_info):
+def concat_session_timestamps(session_info, rootdir, gdrive_subdir, rclone_config):
     mstime = np.array([], dtype=np.int)
     i = 0
     for dat_file in session_info['dat_files']:
+        if not os.path.isfile(dat_file):
+            gdrive_dat_fpath = dat_file[dat_file.find(gdrive_subdir):]
+            dat_file = os.path.join(rootdir, gdrive_dat_fpath)
+            gdrive_download_file(gdrive_dat_fpath, os.path.dirname(dat_file), rclone_config)
         with open(dat_file) as f:
             camNum, frameNum, sysClock, buffer = np.loadtxt(f, dtype='float', comments='#', skiprows=1, unpack=True)
         camNumber = camNum[0]
@@ -37,9 +38,8 @@ def concat_session_timestamps(session_info):
     return mstime, camNumber
 
 
-def save_matlab(cnm, session_info, target_dir, images=[]):
+def save_matlab(cnm, session_info, target_dir, images, mstime, camNumber, extraFields={}):
     RawTraces = cnm.estimates.C
-    mstime, camNumber = concat_session_timestamps(session_info)
     SFP = readSFP(cnm)
     meanFrame = np.mean(images, axis=0)
     results_dict = {
@@ -68,7 +68,9 @@ def save_matlab(cnm, session_info, target_dir, images=[]):
         'numNeurons': SFP.shape[2],
         # 'analysis_duration': analysis_duration
     }
-
+    results_dict.update(extraFields)
     SFPperm = np.transpose(SFP, [2, 0, 1])
     savemat(target_dir + '/SFP.mat', {'SFP': SFPperm})
     savemat(target_dir + '/ms.mat', {'ms': results_dict})
+
+    return target_dir + '/ms.mat', target_dir + '/SFP.mat'

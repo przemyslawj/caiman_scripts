@@ -297,7 +297,10 @@ with open(result_data_dir + '/session_info.yaml', 'r') as f:
 """# Save the results in Matlab format"""
 save_mat = True
 if save_mat:
-    results_format.save_matlab(cnm, session_info, result_data_dir, images[::100])
+    mstime, camNumber = results_format.concat_session_timestamps(session_info, local_rootdir,
+                                                                 downsample_subpath, rclone_config)
+    results_format.save_matlab(cnm, session_info, result_data_dir, images[::100],
+                               mstime, camNumber)
 
 # Stop the cluster
 cm.stop_server(dview=dview)

@@ -90,9 +90,9 @@ for exp_date in ${dates[*]}; do
 
         ./gdrive_upload.sh
 
-		rm -rf $TRIAL_REL_DIR
-		rm -rf $HOME_REL_DIR
-		rm -rf $TEST_REL_DIR
+		rm -rf $LOCAL_ROOTDIR/$TRIAL_REL_DIR
+		rm -rf $LOCAL_ROOTDIR/$HOME_REL_DIR
+		rm -rf $LOCAL_ROOTDIR/$TEST_REL_DIR
     done
 
 done
