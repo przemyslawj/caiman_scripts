@@ -20,7 +20,7 @@ from caiman.source_extraction.cnmf import params as params
 
 logging.basicConfig(level=logging.INFO)
 shortRun = False
-rerun = True
+rerun = False
 
 session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
 if shortRun:
