@@ -218,7 +218,8 @@ print('Number of accepted components: ', len(cnm.estimates.idx_components))
 
 # ## Plot results
 neuronsToPlot = 20
-maxRawTraces = np.amax()
+RawTraces = cnm.estimates.C
+maxRawTraces = np.amax(RawTraces)
 
 plt.figure(figsize=(30, 15))
 plt.subplot(3, 4, 9)
@@ -239,7 +240,6 @@ plt.subplot(2, 2, 2)
 plt.figure
 plt.title('Example traces (first 50 cells)')
 plot_gain = 10  # To change the value gain of traces
-RawTraces = cnm.estimates.C
 numNeurons = cnm.estimates.A.shape[1]
 if numNeurons >= neuronsToPlot:
     for i in range(neuronsToPlot):
