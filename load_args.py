@@ -6,7 +6,8 @@ def optional_arg(arg, none_val):
         return os.environ[arg]
     return none_val
 
-experiment_month = os.environ['EXP_MONTH']
+
+experiment_month = optional_arg('EXP_MONTH', 'missing')
 experiment_title = optional_arg('EXP_TITLE', 'missing')
 experiment_date = optional_arg('EXP_DATE', 'missing')
 animal_name = optional_arg('ANIMAL', 'missing')
