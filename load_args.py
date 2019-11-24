@@ -16,7 +16,7 @@ downsample_subpath = os.environ['DOWNSAMPLE_SUBPATH']
 local_rootdir = os.environ['LOCAL_ROOTDIR']
 
 ncores = int(optional_arg('NCORES', 4))
-rclone_config = optional_arg('RCLONE_CONFIG', '')
+rclone_config = optional_arg('RCLONE_CONFIG', 'missing')
 local_miniscope_path = '/'.join([
     local_rootdir,
     downsample_subpath,

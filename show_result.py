@@ -1,4 +1,3 @@
-from caiman.source_extraction.cnmf.cnmf import load_CNMF
 from caiman.source_extraction.cnmf import params as params
 import caiman as cm
 
@@ -16,8 +15,8 @@ from load_args import *
 # Choose video
 exp_month = '2019-08'
 exp_title = 'learning'
-exp_date = '2019-08-30'
-animal = 'E-TR'
+exp_date = '2019-09-02'
+animal = 'F-TL'
 
 
 vid_index = 1
@@ -54,17 +53,19 @@ if not os.path.isfile(local_mmap_fpath):
 eval_params = {
     'cnn_lowest': .1,
     'min_cnn_thr': 0.9,
-    'use_cnn': True,
+    'use_cnn': False,
     'rval_thr': 0.8,
     'rval_lowest': -1.0,
     'min_SNR': 6,
     'SNR_lowest': 2.5
 }
+max_thr = 0.45
+
 opts = params.CNMFParams(params_dict=eval_params)
 A = cnm_obj.estimates.A
 frames = session_trace_offset + range((vid_index - 1) * 1000, vid_index * 1000)
 images = video.load_images(local_mmap_fpath)
-cnm_obj.estimates.threshold_spatial_components(maxthr=0.5)
+cnm_obj.estimates.threshold_spatial_components(maxthr=max_thr)
 cnm_obj.estimates.remove_small_large_neurons(min_size_neuro=20, max_size_neuro=110)
 idx_components_bad = cnm_obj.estimates.idx_components_bad
 if reevaluate:
@@ -91,7 +92,7 @@ def save_movie(estimate, imgs, Y_res, frames, q_max=99.5, q_min=2, gain=0.6,
                magnification=1,
                bpx=0, thr=0.,
                movie_name='results_movie.avi',
-               fr=80,
+               fr=60,
                discard_bad_components=True):
     dims = imgs.shape[1:]
     if 'movie' not in str(type(imgs)):
@@ -166,7 +167,8 @@ def save_movie(estimate, imgs, Y_res, frames, q_max=99.5, q_min=2, gain=0.6,
             if cell_idx in cnm_obj.estimates.idx_components_bad:
                 contour_col = red_col
             for contour in cell_contours[cell_idx]:
-                cv2.drawContours(contours_frame, contour, -1, contour_col, 1)
+                convexContour = cv2.convexHull(contour[0], clockwise=True)
+                cv2.drawContours(contours_frame, [convexContour], -1, contour_col, 1)
 
         concat_frame = np.concatenate([rgbframe,
                                        contours_frame,

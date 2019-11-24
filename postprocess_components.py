@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 
 # Choose sessions
 exp_titles = ['habituation', 'learning']
-animal = 'E-BL'
+animal = 'F-TL'
 
 components_quality_params = {
     'use_cnn': False,
@@ -26,13 +26,13 @@ components_quality_params = {
 }
 
 registration_params = {
-    'max_thr': 0.5,
+    'max_thr': 0.45,
     'thresh_cost': 0.75,
     'max_dist': 10
 }
 
 
-def filter_components(cnm_obj, components_quality_params, registration_params):
+def filter_components(cnm_obj, components_quality_params, registration_params, exp_date):
     cnm_obj.estimates.threshold_spatial_components(maxthr=registration_params['max_thr'])
     cnm_obj.estimates.remove_small_large_neurons(min_size_neuro=components_quality_params['min_size_neuro'],
                                                  max_size_neuro=components_quality_params['max_size_neuro'])
@@ -79,7 +79,8 @@ for exp_title in exp_titles:
             'session_info': load_session_info(result_dir, gdrive_result_dir, rclone_config),
             'template': np.load(rigid_template_fpath),
             'gdrive_result_dir': gdrive_result_dir,
-            'result_dir': result_dir
+            'result_dir': result_dir,
+            'exp_date': exp_date
         })
 
 
@@ -87,7 +88,8 @@ for exp_title in exp_titles:
 for session_i, session in enumerate(session_objs):
     session['cnm_obj_filtered'] = filter_components(session['cnm_obj'],
                                                     components_quality_params,
-                                                    registration_params)
+                                                    registration_params,
+                                                    session['exp_date'])
 
 # Do multisession registration
 spatial_comps = [d['cnm_obj_filtered'].estimates.A for d in session_objs]

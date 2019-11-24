@@ -15,12 +15,12 @@ logging.basicConfig(level=logging.INFO)
 experiment_month = '2019-08'
 exp_title_dates = {
     'habituation': ['2019-08-27', '2019-08-28', '2019-08-29'],
-    'learning': ['2019-08-30']
+    'learning': ['2019-08-30', '2019-08-31', '2019-09-01']
 }
 
-animal = 'E-BL'
+animal = 'F-TL'
 
-filteredComponents = True
+filteredComponents = False
 
 spatial = []
 templates = []
@@ -52,7 +52,7 @@ for exp_title in exp_title_dates.keys():
         templates.append(np.load(rigid_template_fpath))
         dims = cnm_obj.dims
 
-max_thr = 0.5
+max_thr = 0.45
 thresh_cost = 0.7
 max_dist = 10
 spatial_union, assignments, mappings = register_multisession(A=spatial, dims=dims, templates=templates,
