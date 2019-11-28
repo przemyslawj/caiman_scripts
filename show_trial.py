@@ -2,17 +2,19 @@ import caiman as cm
 import cv2
 import numpy as np
 import pandas as pd
-import time
-
+import matplotlib.pyplot as plt
+from matplotlib.animation import FFMpegWriter
 
 from miniscope_file import gdrive_download_file, load_session_info, load_hdf5_result
 from load_args import *
-
+import video
 
 exp_month = '2019-08'
 date_str = '2019-09-01'
 animal = 'E-TR'
 trial = 6
+#selected_cells = [15, 31, 36, 48, 76]
+selected_cells = [x for x in range(10,100, 5)]
 
 exp_title = 'learning'
 exp_name = 'trial'
@@ -119,13 +121,15 @@ if not os.path.isfile(tracking_filepath):
     gdrive_download_file(gdrive_tracking_fpath, tracking_dir, rclone_config)
 tracking_df = pd.read_csv(tracking_filepath)
 
-video_outputfile = os.path.join(tracking_dir, tracking_filename + '.avi')
+video_traces_outputfile = os.path.join(tracking_dir, tracking_filename + '_traces.avi')
 
 video_dims = (320 * 2, 240)
 single_video_dims = (320, 240)
-video_writer = create_video_writer(video_outputfile, frame_rate=15*3,
-                                   format='FFV1',
-                                   video_dim=video_dims)
+caimg_frame_rate = 20
+#video_outputfile = os.path.join(tracking_dir, tracking_filename + '.avi')
+#video_writer = create_video_writer(video_outputfile, frame_rate=15*3,
+#                                   format='FFV1',
+#                                   video_dim=video_dims)
 
 frame_idx = 0
 row_idx = 0
@@ -134,20 +138,42 @@ valid_pos = [(0, 0)] * len(tracking_df)
 pos_idx = 0
 caimg_frame = 0
 
-import video
-#ca_images = video.load_images(local_mmap_fpath)
 ca_images = np.concatenate([video.load_images(f) for f in local_mmap_fpaths], axis=0)
-ca_movie = cm.movie(ca_images)
+ca_movie = ca_images
+mean_movie = np.mean(ca_movie, axis=0)
 
-maxmov = np.nanpercentile(ca_movie, 99.99)
-minmov = np.nanpercentile(ca_movie, 0.01)
-maxmov = np.max(ca_images)
+maxmov = int(np.nanpercentile(ca_movie[10:50], 80))
+minmov = int(np.nanpercentile(ca_movie[10:50], 2))
 caimg_frame = None
 caimg_timestamps[0] = -1
 caimg_frame_index = 0
 caimg_timestamp = -1
-#all_ca_images = video.load_images(miniscope_file.get_joined_memmap_fpath(result_dir))
 
+writer = FFMpegWriter(fps=15 * 3, metadata=dict(title='Test'))
+fig = plt.figure()
+plt.subplot(2, 1, 1)
+ca_vid_plt = plt.imshow(np.zeros(video_dims).transpose())
+plt.subplot(2, 1, 2)
+
+window_sec = 4
+plt.xlim(-window_sec, window_sec)
+C = cnm_obj.estimates.C
+cell_contours = video.create_contours(cnm_obj.estimates.A[:,selected_cells],
+                                      ca_movie.shape[1:], thr=0.75)
+trace_vid_plt = [0] * len(selected_cells)
+contour_colours = dict()
+import matplotlib.colors as mcolors
+for i in range(len(selected_cells)):
+    trace_vid_plt[i], = plt.plot([], [], '-')
+    hexcol = trace_vid_plt[i].get_c()
+    contour_colours[i] = np.array(mcolors.hex2color(hexcol)) * 255
+
+ca_max = np.quantile(C[selected_cells,:], 0.995) + len(selected_cells) * 2.0
+ca_min = np.quantile(C[selected_cells,:], 0.05)
+plt.ylim(ca_min, ca_max)
+
+writer.setup(fig, video_traces_outputfile, dpi=500)
+print('Output file: ' + video_traces_outputfile)
 while has_frame:
     if row_idx >= len(tracking_df):
         break
@@ -178,24 +204,42 @@ while has_frame:
         caimg_frame = ca_movie[caimg_frame_index]
         caimg_frame_index += 1
 
-    #caimg_frame = np.clip(minmov + (caimg_frame - minmov) * 150. / (maxmov - minmov), 0, 180)
-    rgb_caimg_frame = cv2.cvtColor(caimg_frame, cv2.COLOR_GRAY2RGB)
+    caimg_frame_clipped = np.clip((caimg_frame - minmov) * 255. * 0.6 / (maxmov - minmov), 0., 255.)
+    #caimg_frame_dff = np.clip(0.2 * caimg_frame + (caimg_frame - mean_movie) / mean_movie * 250, 0., 255.)
+    rgb_caimg_frame = cv2.cvtColor(caimg_frame_clipped.astype('uint8'), cv2.COLOR_GRAY2RGB)
+    video.draw_contours(rgb_caimg_frame, cell_contours, cnm_obj, contour_colours)
+
     merged_frame = np.concatenate(
         [cv2.resize(frame, single_video_dims), cv2.resize(rgb_caimg_frame, single_video_dims)],
         axis=1)
-    cv2.imshow(window_name, merged_frame.astype('uint8'))
+    #cv2.imshow(window_name, rgb_caimg_frame.astype('uint8'))
+
+    ca_vid_plt.set_array(merged_frame.astype('uint8'))
+
+    def get_centered_timestamps(timestamps, center_index, nframes=window_sec * caimg_frame_rate):
+        indices = range(max(0, center_index - nframes), min(center_index + nframes, len(timestamps)))
+        ts = (np.array(timestamps[[*indices]]) - timestamps[center_index]) / 1000
+        return indices, ts
+
+    indices, ts = get_centered_timestamps(caimg_timestamps, caimg_frame_index - 1)
+    for cell_i, cell in enumerate(selected_cells):
+        shifted_trace = C[cell, np.array(indices) + session_trace_offset] + cell_i * 2.0
+        trace_vid_plt[cell_i].set_data(ts, shifted_trace)
 
     if pos_idx > 0:
-        video_writer.write(merged_frame.astype('uint8'))
+        #video_writer.write(merged_frame.astype('uint8'))
+        writer.grab_frame()
 
-    k = cv2.waitKey(1) & 0xff
-    if k == 27:  # ESC
-        break
-    time.sleep(0.00001)
+    #k = cv2.waitKey(1) & 0xff
+    #if k == 27:  # ESC
+    #    break
 
+    #if frame_idx > 500:
+    #    break
     has_frame, frame = stream.read()
     frame_idx += 1
 
-cv2.destroyAllWindows()
-video_writer.release()
+writer.finish()
+#cv2.destroyAllWindows()
+#video_writer.release()
 stream.release()

@@ -15,12 +15,12 @@ from load_args import *
 # Choose video
 exp_month = '2019-08'
 exp_title = 'learning'
-exp_date = '2019-09-02'
-animal = 'F-TL'
+exp_date = '2019-09-01'
+animal = 'E-TR'
 
 
 vid_index = 1
-session_index = 2
+session_index = 6
 reevaluate = False
 
 
@@ -88,9 +88,8 @@ print('# Components remained: ' + str(cnm_obj.estimates.nr - len(cnm_obj.estimat
 """ Create movie with the cells activity """
 
 # TODO: scale Y_res frame
-def save_movie(estimate, imgs, Y_res, frames, q_max=99.5, q_min=2, gain=0.6,
+def save_movie(estimate, imgs, Y_res, frames, q_max=99.5, q_min=2, bpx=0, thr=0.6, gain=0.6,
                magnification=1,
-               bpx=0, thr=0.,
                movie_name='results_movie.avi',
                fr=60,
                discard_bad_components=True):
@@ -103,24 +102,7 @@ def save_movie(estimate, imgs, Y_res, frames, q_max=99.5, q_min=2, gain=0.6,
     out_vid_shape = [int(magnification * s) for s in mov.shape[1:][::-1]]
     out_vid_shape[0] *= 3 # Three vids are horizontally stacked
     out = cv2.VideoWriter(movie_name, fourcc, fr, tuple(out_vid_shape))
-    cell_contours = dict()
-    cell_idx = 0
-    for a in estimate.A.T.toarray():
-        a = a.reshape(dims, order='F')
-        if bpx > 0:
-            a = a[bpx:-bpx, bpx:-bpx]
-        if magnification != 1:
-            a = cv2.resize(a, None, fx=magnification, fy=magnification,
-                           interpolation=cv2.INTER_LINEAR)
-        ret, thresh = cv2.threshold(a, thr * np.max(a), 1., 0)
-        contour, hierarchy = cv2.findContours(
-            thresh.astype('uint8'), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        contours = []
-        contours.append(contour)
-        contours.append(list([c + np.array([[a.shape[1], 0]]) for c in contour]))
-        contours.append(list([c + np.array([[2 * a.shape[1], 0]]) for c in contour]))
-        cell_contours[cell_idx] = contours
-        cell_idx += 1
+
 
     maxmov = np.nanpercentile(mov[0:10], q_max) if q_max < 100 else np.nanmax(mov)
     minmov = np.nanpercentile(mov[0:10], q_min) if q_min > 0 else np.nanmin(mov)
@@ -129,7 +111,9 @@ def save_movie(estimate, imgs, Y_res, frames, q_max=99.5, q_min=2, gain=0.6,
     components = range(estimate.A.shape[1])
     if discard_bad_components:
         components = estimate.idx_components
+
     A = estimate.A[:,components]
+    cell_contours = video.create_contours(A, dims, magnification, bpx=bpx, thr=thr)
     for frame in mov:
         frame_index = frames[index]
         min_denoised_val = 30
@@ -160,15 +144,7 @@ def save_movie(estimate, imgs, Y_res, frames, q_max=99.5, q_min=2, gain=0.6,
         rgbframe = cv2.cvtColor(raw_frame, cv2.COLOR_GRAY2RGB)
 
         contours_frame = cv2.cvtColor(contours_frame, cv2.COLOR_GRAY2RGB)
-        for cell_idx in cell_contours.keys():
-            yellow_col = (0, 255, 255)
-            red_col = (0, 0, 255)
-            contour_col = yellow_col
-            if cell_idx in cnm_obj.estimates.idx_components_bad:
-                contour_col = red_col
-            for contour in cell_contours[cell_idx]:
-                convexContour = cv2.convexHull(contour[0], clockwise=True)
-                cv2.drawContours(contours_frame, [convexContour], -1, contour_col, 1)
+        video.draw_contours(contours_frame, cell_contours, cnm_obj)
 
         concat_frame = np.concatenate([rgbframe,
                                        contours_frame,
