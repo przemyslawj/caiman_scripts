@@ -69,14 +69,14 @@ def create_contours(A, frame_dims, magnification=1, bpx=0, thr=0.8):
     return cell_contours
 
 
-def draw_contours(frame, cell_contours, cnm_obj, colours={}):
+def draw_contours(frame, cell_contours, cnm_obj, colours={}, color_bad_components=False):
     for cell_idx in cell_contours.keys():
         yellow_col = (0, 255, 255)
         red_col = (0, 0, 255)
         contour_col = yellow_col
         if cell_idx in colours.keys():
             contour_col = colours[cell_idx]
-        if cell_idx in cnm_obj.estimates.idx_components_bad:
+        if color_bad_components and (cell_idx in cnm_obj.estimates.idx_components_bad):
             contour_col = red_col
 
         for contour in cell_contours[cell_idx]:

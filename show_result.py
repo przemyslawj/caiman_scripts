@@ -13,14 +13,14 @@ from miniscope_file import gdrive_download_file, load_session_info, load_hdf5_re
 from load_args import *
 
 # Choose video
-exp_month = '2019-08'
-exp_title = 'learning'
-exp_date = '2019-09-01'
-animal = 'E-TR'
+exp_month = '2019-07'
+exp_title = 'habituation'
+exp_date = '2019-07-18'
+animal = 'B-BL'
 
 
-vid_index = 1
-session_index = 6
+vid_index = 2
+session_index = 1
 reevaluate = False
 
 
@@ -51,13 +51,13 @@ if not os.path.isfile(local_mmap_fpath):
 # Load results
 
 eval_params = {
-    'cnn_lowest': .1,
-    'min_cnn_thr': 0.9,
     'use_cnn': False,
     'rval_thr': 0.8,
     'rval_lowest': -1.0,
     'min_SNR': 6,
-    'SNR_lowest': 2.5
+    'SNR_lowest': 2.5,
+    'min_size_neuro': 20,
+    'max_size_neuro': 110
 }
 max_thr = 0.45
 
@@ -144,7 +144,8 @@ def save_movie(estimate, imgs, Y_res, frames, q_max=99.5, q_min=2, bpx=0, thr=0.
         rgbframe = cv2.cvtColor(raw_frame, cv2.COLOR_GRAY2RGB)
 
         contours_frame = cv2.cvtColor(contours_frame, cv2.COLOR_GRAY2RGB)
-        video.draw_contours(contours_frame, cell_contours, cnm_obj)
+        video.draw_contours(contours_frame, cell_contours, cnm_obj,
+                            color_bad_components=(not discard_bad_components))
 
         concat_frame = np.concatenate([rgbframe,
                                        contours_frame,
@@ -165,4 +166,5 @@ Y_res = model_residual(images, cnm_obj, 2, frames)
 avifilename = 'Session' + str(session_index) + '_msCam' + str(vid_index) + '_result.avi'
 save_movie(cnm_obj.estimates, images, Y_res, frames, q_max=75, magnification=2,
            bpx=0, thr=0.6, gain=0.4,
-           movie_name=os.path.join(result_dir, avifilename))
+           movie_name=os.path.join(result_dir, avifilename),
+           discard_bad_components=False)
