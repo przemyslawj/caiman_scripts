@@ -23,7 +23,7 @@ def read_timestamps(dat_file):
     camNumber = camNum[0]
     mstime_idx = np.where(camNum == camNumber)
     this_mstime = sysClock[mstime_idx]
-    return this_mstime
+    return this_mstime, camNumber
 
 
 def concat_session_timestamps(session_info, rootdir, gdrive_subdir, rclone_config):
@@ -34,7 +34,7 @@ def concat_session_timestamps(session_info, rootdir, gdrive_subdir, rclone_confi
             gdrive_dat_fpath = dat_file[dat_file.find(gdrive_subdir):]
             dat_file = os.path.join(rootdir, gdrive_dat_fpath)
             gdrive_download_file(gdrive_dat_fpath, os.path.dirname(dat_file), rclone_config)
-        this_mstime = read_timestamps(dat_file)
+        this_mstime, camNumber = read_timestamps(dat_file)
         this_mstime = this_mstime[0:session_info['session_lengths'][i]]
         mstime = np.concatenate([mstime, this_mstime])
         i += 1
