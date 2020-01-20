@@ -158,7 +158,7 @@ gnb = 0             # number of background components (rank) if positive,
 #                         gnb<-1: Don't return background
 nb_patch = 0        # number of background components (rank) per patch if gnb>0,
 #                     else it is set automatically
-min_corr = .75     # min peak value from correlation image
+min_corr = .7     # min peak value from correlation image
 min_pnr = 8        # min peak to noise ration from PNR image
 ssub_B = 2          # additional downsampling factor in space for background
 ring_size_factor = 1.6  # radius of ring is gSiz*ring_size_factor
@@ -282,6 +282,10 @@ plt.savefig(result_data_dir + '/' + 'summary_figure.svg', edgecolor='w', format=
 """# Save the results in HDF5 format"""
 
 save_hdf5 = True
+# workaround for issue: https://github.com/flatironinstitute/CaImAn/issues/673
+cnm.estimates.r_values = np.where(np.isnan(cnm.estimates.r_values), -1, cnm.estimates.r_values)
+cnm.estimates.SNR_comp = np.where(np.isnan(cnm.estimates.SNR_comp), 0, cnm.estimates.SNR_comp)
+
 if save_hdf5:
     cnm.save(result_data_dir + '/analysis_results.hdf5')
 

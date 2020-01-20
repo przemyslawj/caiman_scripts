@@ -85,12 +85,13 @@ for exp_date in ${dates[*]}; do
         time python run_cnmfe.py
         status=$?
         if [ $status -ne 0 ]; then
+            echo "Run CNMFE exited with error"
             exit $status
         fi
 
         ./gdrive_upload.sh
 
-		rm -rf $LOCAL_ROOTDIR/$DOWNSAMPLE_SUBPATH
+        rm -rf ${LOCAL_ROOTDIR}/${DOWNSAMPLE_SUBPATH}/${EXP_MONTH}/${EXP_TITLE}/${EXP_DATE}
     done
 
 done

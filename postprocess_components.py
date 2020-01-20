@@ -13,7 +13,17 @@ logging.basicConfig(level=logging.INFO)
 
 # Choose sessions
 exp_titles = ['habituation', 'learning']
-animal = 'F-TL'
+animal = 'D-BR'
+
+vca1_neuron_sizes = {
+    'max': 200,
+    'min': 30
+}
+dca1_neuron_sizes = {
+    'max': 110,
+    'min': 20
+}
+neuron_size_params = vca1_neuron_sizes
 
 components_quality_params = {
     'use_cnn': False,
@@ -21,8 +31,6 @@ components_quality_params = {
     'rval_lowest': -1.0,
     'min_SNR': 6,
     'SNR_lowest': 2.5,
-    'min_size_neuro': 20,
-    'max_size_neuro': 110
 }
 
 registration_params = {
@@ -34,16 +42,17 @@ registration_params = {
 
 def filter_components(cnm_obj, components_quality_params, registration_params, exp_date):
     cnm_obj.estimates.threshold_spatial_components(maxthr=registration_params['max_thr'])
-    cnm_obj.estimates.remove_small_large_neurons(min_size_neuro=components_quality_params['min_size_neuro'],
-                                                 max_size_neuro=components_quality_params['max_size_neuro'])
+    cnm_obj.estimates.remove_small_large_neurons(min_size_neuro=neuron_size_params['min'],
+                                                 max_size_neuro=neuron_size_params['max'])
+    logging.info('%s: filtered %d neurons based on the size', exp_date, len(cnm_obj.estimates.idx_components_bad))
     cnm_obj.estimates.accepted_list = cnm_obj.estimates.idx_components
     empty_images = np.zeros((1,) + cnm_obj.dims)
     cnm_obj.estimates.filter_components(empty_images, cnm_obj.params,
                                         new_dict=components_quality_params,
                                         select_mode='Accepted')
 
-    print(exp_date + ', bad components: ' + str(cnm_obj.estimates.idx_components_bad))
-    print(exp_date + ', # Components remained: ' + str(cnm_obj.estimates.nr - len(cnm_obj.estimates.idx_components_bad)))
+    logging.info(exp_date + ', bad components: ' + str(cnm_obj.estimates.idx_components_bad))
+    logging.info(exp_date + ', # Components remained: ' + str(cnm_obj.estimates.nr - len(cnm_obj.estimates.idx_components_bad)))
 
     cnm_obj.estimates.select_components(use_object=True)
     return cnm_obj
@@ -86,6 +95,7 @@ for exp_title in exp_titles:
 
 # Filter components
 for session_i, session in enumerate(session_objs):
+    logging.info('Filtering session from ' + session['exp_date'])
     session['cnm_obj_filtered'] = filter_components(session['cnm_obj'],
                                                     components_quality_params,
                                                     registration_params,

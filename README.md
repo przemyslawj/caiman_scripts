@@ -72,12 +72,12 @@ This creates the h5 files with the extracted signal in subdirectory `caiman` loc
 2. Posprocess data
 2.1. Prepare environment:
   source vars_setup.sh
+  export EXP_MONTH=XXXX-XX
 2.2. Run postprocessing
 ```
 conda activate caiman
 python postprocess_components.py
 ```
-Use `gdrive_upload.sh` script to upload the filtered data to google drive.
 
 
 Follow up steps:
