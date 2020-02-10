@@ -63,7 +63,6 @@ for exp_date in ${dates[*]}; do
             exit $status
         fi
 
-        #./gdrive_download_processed.sh
         time python caiman_mc.py
         status=$?
         if [ $status -ne 0 ]; then

@@ -17,9 +17,8 @@ def write_avi(memmap_fpath, result_data_dir):
     images = load_images(memmap_fpath)
     # Write motion corrected video to drive
     w = cm.movie(images)
-    #mcwriter = skvideo.io.FFmpegWriter(result_data_dir + '/mc.avi', outputdict={
-    #  '-c:v': 'copy'})
-    mcwriter = skvideo.io.FFmpegWriter(result_data_dir + '/mc.avi')
+    mcwriter = skvideo.io.FFmpegWriter(result_data_dir + '/mc.avi',
+                                       outputdict={'-vcodec': 'rawvideo'})
     for iddxx, frame in enumerate(w):
       mcwriter.writeFrame(frame.astype('uint8'))
     mcwriter.close()

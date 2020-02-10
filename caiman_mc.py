@@ -17,6 +17,8 @@ import subprocess
 import caiman as cm
 from caiman.motion_correction import MotionCorrect
 from caiman.source_extraction.cnmf import params as params
+from caiman.motion_correction import motion_correct_oneP_rigid, motion_correct_oneP_nonrigid
+
 
 logging.basicConfig(level=logging.INFO)
 shortRun = False
@@ -48,35 +50,19 @@ frate = 20                       # movie frame rate
 
 # motion correction parameters
 pw_rigid = False         # flag for performing piecewise-rigid motion correction (otherwise just rigid)
-gSig_filt = (8, 8)       # size of high pass spatial filtering, used in 1p data
-max_shifts = (12, 12)      # maximum allowed rigid shift
+#gSig_filt = (8, 8)       # size of high pass spatial filtering, used in 1p data
+gSig_filt = (3, 3)       # size of high pass spatial filtering, used in 1p data
+gSiz = (7, 7)
+max_shifts = (8, 8)      # maximum allowed rigid shift
 strides = (48, 48)       # start a new patch for pw-rigid motion correction every x pixels
 overlaps = (16, 16)      # overlap between patches (size of patch strides+overlaps)
-max_deviation_rigid = 4  # maximum deviation allowed for patch with respect to rigid shifts
 border_nan = 'copy'      # replicate values along the boundaries
 use_cuda = False         # Set to True in order to use GPU
 only_init_patch = True
-
-mc_dict = {
-    'fr': frate,
-    'niter_rig': 4,
-    'splits_rig': 2,  # This is to avoid error with empty splits on small videos
-    'splits_els': 2,  # This is to avoid error with empty splits on small videos
-    # if none all the splits are processed and the movie is saved
-    'num_splits_to_process_rig': None, # intervals at which patches are laid out for motion correction
-    'pw_rigid': pw_rigid,
-    'max_shifts': max_shifts,
-    'gSig_filt': gSig_filt,
-    'strides': strides,
-    'overlaps': overlaps,
-    'max_deviation_rigid': max_deviation_rigid,
-    'border_nan': border_nan,
-    'use_cuda' : use_cuda,
-    'only_init_patch': only_init_patch,
-    'memory_fact': 1.0,
-}
-
-opts = params.CNMFParams(params_dict=mc_dict)
+splits_rig = 2
+splits_els = 2
+upsample_factor_grid = 4  # upsample factor to avoid smearing when merging patches
+max_deviation_rigid = 3  # maximum deviation allowed for patch with respect to rigid shifts
 
 
 def get_mean_frame(f):
@@ -142,14 +128,34 @@ def plot_stats(session_fpath, mc, shifts_rig):
 
 def mc_vids(vids_fpath, mc_rigid_template):
     start = time.time()
-    mc = MotionCorrect(vids_fpath, dview=dview, **opts.get_group('motion'))
-    mc.motion_correct(save_movie=True, template=mc_rigid_template)
+    mc = motion_correct_oneP_rigid(vids_fpath,
+                                   gSig_filt=gSig_filt,
+                                   max_shifts=max_shifts,
+                                   dview=dview,
+                                   splits_rig=splits_rig,
+                                   save_movie=True,
+                                   border_nan='copy')
     shifts_rig = mc.shifts_rig
+    template_rig = mc.total_template_rig
 
     if doPwRigid:
         mc.pw_rigid = True
-        mc.template = mc.mmap_file  # use the template obtained before to save in computation (optional)
-        mc.motion_correct(save_movie=True, template=mc.total_template_rig)
+        mc = motion_correct_oneP_nonrigid(
+            vids_fpath,
+            gSig_filt=gSig_filt,
+            max_shifts=max_shifts,
+            strides=strides,
+            overlaps=overlaps,
+            splits_els=splits_els,
+            upsample_factor_grid=upsample_factor_grid,
+            max_deviation_rigid=max_deviation_rigid,
+            dview=dview,
+            splits_rig=None,
+            save_movie=True,
+            new_templ=mc.total_template_rig,  # template to initialize motion correction
+            border_nan='copy'
+        )
+        mc.total_template_rig = template_rig
 
     duration = time.time() - start
     print('Motion correction done in ' + str(duration))

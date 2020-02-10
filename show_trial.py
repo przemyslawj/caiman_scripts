@@ -10,15 +10,15 @@ from load_args import *
 import video
 
 exp_month = '2019-08'
-date_str = '2019-09-01'
-animal = 'E-TR'
+date_str = '2019-09-03'
+animal = 'F-TL'
 trial = 6
 #selected_cells = [15, 31, 36, 48, 76]
-selected_cells = [x for x in range(10,100, 5)]
+selected_cells = [x for x in range(10, 100, 5)]
 
 exp_title = 'learning'
 exp_name = 'trial'
-dated_dir = os.path.join('/home/przemek/neurodata/cheeseboard', exp_month, exp_title, date_str, exp_name)
+dated_dir = os.path.join('cheeseboard', local_rootdir, exp_month, exp_title, date_str, exp_name)
 
 
 def create_video_writer(video_outputfile, frame_rate, format='IYUV', video_dim=(640,480)):

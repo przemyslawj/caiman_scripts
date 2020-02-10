@@ -4,7 +4,8 @@ export DOWNSAMPLE=2
 
 export TRIAL_REL_DIR="${EXP_MONTH}/${EXP_TITLE}/${EXP_DATE}/trial/mv_caimg/${ANIMAL}/"
 export HOME_REL_DIR="${EXP_MONTH}/${EXP_TITLE}/${EXP_DATE}/homecage/mv_caimg/${ANIMAL}/"
-export TEST_REL_DIR="${EXP_MONTH}/${EXP_TITLE}/${EXP_DATE}/test/mv_caimg/${ANIMAL}/"
+export AFTERTEST_REL_DIR="${EXP_MONTH}/${EXP_TITLE}/${EXP_DATE}/aftertest/mv_caimg/${ANIMAL}/"
+export BEFORETEST_REL_DIR="${EXP_MONTH}/${EXP_TITLE}/${EXP_DATE}/beforetest/mv_caimg/${ANIMAL}/"
 export CAIMAN_REL_DIR="${EXP_MONTH}/${EXP_TITLE}/${EXP_DATE}/caiman/${ANIMAL}/"
 
 #export RCLONE_CONFIG=drive_synced
@@ -15,4 +16,6 @@ export CONFIG_FILE=`pwd`/env/rclone.conf
 #export LOCAL_ROOTDIR=/home/przemek/neurodata
 export LOCAL_ROOTDIR=/home/prez/neurodata
 export DOWNSAMPLE_SUBPATH=cheeseboard-down/down_${DOWNSAMPLE}
+
+export DATE_ROOTDIR=${LOCAL_ROOTDIR}/${DOWNSAMPLE_SUBPATH}/${EXP_MONTH}/${EXP_TITLE}/${EXP_DATE}/
 

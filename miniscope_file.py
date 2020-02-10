@@ -7,7 +7,8 @@ import yaml
 
 def list_session_dirs(src_miniscope_path, animal_name):
     session_dirs = []
-    exp_subdirs = ['trial', 'homecage', 'test']
+    exp_subdirs = ['trial', 'homecage','beforetest', 'aftertest']
+    logging.info('Listing sessions in dir=%s for animal=%s', src_miniscope_path, animal_name)
     for exp_subdir in exp_subdirs:
         if not os.path.isdir(os.path.join(src_miniscope_path, exp_subdir)):
             continue
@@ -28,18 +29,20 @@ def get_timestamped_path(session_fpath):
     return(timestamped_path)
 
 
-def sort_mscam(x: str):
-    filename = os.path.basename(x)
-    if not filename.startswith('msCam'):
-        raise Exception('Expected msCam file, but got: ' + x)
-    return int(re.findall("\d+", filename)[0])
+def sort_mscam(vid_prefix: str = 'msCam'):
+    def sort_fun(x: str):
+        filename = os.path.basename(x)
+        if not filename.startswith(vid_prefix):
+            raise Exception('Expected msCam file, but got: ' + x)
+        return int(re.findall("\d+", filename)[0])
+    return sort_fun
 
 
-def list_vidfiles(session_fpath):
+def list_vidfiles(session_fpath, vid_prefix='msCam'):
     timestamped_path = get_timestamped_path(session_fpath)
 
-    msFileList = [f for f in os.listdir(timestamped_path) if f.startswith('msCam') and f.endswith('.avi')]
-    msFileList = sorted(msFileList, key=sort_mscam)
+    msFileList = [f for f in os.listdir(timestamped_path) if f.startswith(vid_prefix) and f.endswith('.avi')]
+    msFileList = sorted(msFileList, key=sort_mscam(vid_prefix))
     vid_fpaths = [timestamped_path + '/' + fname for fname in msFileList]
 
     return vid_fpaths
@@ -57,7 +60,7 @@ def get_memmap_files(s_fpath, pwRigid=False, prefix='msCam'):
     timestamped_path = get_timestamped_path(s_fpath)
     mmapFiles = [timestamped_path + '/' + f for f in os.listdir(timestamped_path)
             if f.startswith(prefix) and f.endswith('.mmap') and infix in f]
-    return sorted(mmapFiles, key=sort_mscam)
+    return sorted(mmapFiles, key=sort_mscam(prefix))
 
 
 def get_joined_memmap_fpath(result_data_dir):

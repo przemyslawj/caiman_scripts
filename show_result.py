@@ -13,13 +13,13 @@ from miniscope_file import gdrive_download_file, load_session_info, load_hdf5_re
 from load_args import *
 
 # Choose video
-exp_month = '2019-07'
+exp_month = '2020-01'
 exp_title = 'habituation'
-exp_date = '2019-07-18'
-animal = 'B-BL'
+exp_date = '2020-01-29'
+animal = 'L-TL'
 
 
-vid_index = 2
+vid_index = 1
 session_index = 1
 reevaluate = False
 
@@ -56,17 +56,26 @@ eval_params = {
     'rval_lowest': -1.0,
     'min_SNR': 6,
     'SNR_lowest': 2.5,
-    'min_size_neuro': 20,
-    'max_size_neuro': 110
 }
 max_thr = 0.45
+
+vca1_neuron_sizes = {
+    'max': 200,
+    'min': 30
+}
+dca1_neuron_sizes = {
+    'max': 110,
+    'min': 20
+}
+neuron_size_params = vca1_neuron_sizes
 
 opts = params.CNMFParams(params_dict=eval_params)
 A = cnm_obj.estimates.A
 frames = session_trace_offset + range((vid_index - 1) * 1000, vid_index * 1000)
 images = video.load_images(local_mmap_fpath)
 cnm_obj.estimates.threshold_spatial_components(maxthr=max_thr)
-cnm_obj.estimates.remove_small_large_neurons(min_size_neuro=20, max_size_neuro=110)
+cnm_obj.estimates.remove_small_large_neurons(min_size_neuro=neuron_size_params['min'],
+                                             max_size_neuro=neuron_size_params['max'])
 idx_components_bad = cnm_obj.estimates.idx_components_bad
 if reevaluate:
     print('evaluating components')

@@ -30,7 +30,7 @@ down_size = [width / spatial_downsampling, height / spatial_downsampling]
 
 session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
 for s_fpath in session_fpaths:
-    vids_fpath = miniscope_file.list_vidfiles(s_fpath)
+    vids_fpath = miniscope_file.list_vidfiles(s_fpath, vid_prefix='msCam')
     for video in vids_fpath:
         clip = VideoFileClip(video)
         cropped = crop(clip, x1, y1, x2, y2)
