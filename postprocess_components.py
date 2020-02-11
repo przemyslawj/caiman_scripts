@@ -13,7 +13,6 @@ logging.basicConfig(level=logging.INFO)
 
 # Choose sessions
 exp_titles = ['habituation', 'learning']
-animal = 'D-BR'
 
 vca1_neuron_sizes = {
     'max': 200,
@@ -67,9 +66,9 @@ for exp_title in exp_titles:
     exp_dates = [x.strip() for x in cp.stdout.split('\n') if len(x.strip()) > 0]
     for exp_date in exp_dates:
         gdrive_dated_dir = os.path.join(gdrive_exp_dir, exp_date)
-        gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal)
+        gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal_name)
         local_dated_dir = os.path.join(local_rootdir, gdrive_dated_dir)
-        result_dir = os.path.join(local_dated_dir, 'caiman', animal)
+        result_dir = os.path.join(local_dated_dir, 'caiman', animal_name)
 
         cnm_obj = load_hdf5_result(result_dir, gdrive_result_dir, rclone_config)
         if cnm_obj is None:
