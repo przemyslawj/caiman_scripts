@@ -9,16 +9,18 @@ from miniscope_file import gdrive_download_file, load_session_info, load_hdf5_re
 from load_args import *
 import video
 
-exp_month = '2019-08'
-date_str = '2019-09-03'
-animal = 'F-TL'
-trial = 6
-#selected_cells = [15, 31, 36, 48, 76]
-selected_cells = [x for x in range(10, 100, 5)]
 
-exp_title = 'learning'
+trial = int(os.environ['TRIAL_NO'])
+selected_cell_ids_str = optional_arg('CELL_IDS', '')
+
+selected_cell_ids = []
+if len(selected_cell_ids_str) > 0:
+    selected_cell_ids = [int(x) for x in selected_cell_ids_str.split(',')]
+
+useFiltered = True
+
 exp_name = 'trial'
-dated_dir = os.path.join('cheeseboard', local_rootdir, exp_month, exp_title, date_str, exp_name)
+dated_dir = os.path.join(local_rootdir, 'cheeseboard', experiment_month, experiment_title, experiment_date, exp_name)
 
 
 def create_video_writer(video_outputfile, frame_rate, format='IYUV', video_dim=(640,480)):
@@ -50,11 +52,11 @@ def stream_from_file(video_file):
 
 
 # Prepare tracking video stream
-video_filename = '_'.join(filter(lambda x: x is not None, [date_str, animal, 'trial', str(trial)])) + '.avi'
+video_filename = '_'.join(filter(lambda x: x is not None, [experiment_date, animal_name, 'trial', str(trial)])) + '.avi'
 movie_dir = os.path.join(dated_dir, 'movie')
 video_filepath = os.path.join(movie_dir, video_filename)
 if not os.path.isfile(video_filepath):
-    gdrive_vid_dir = '/'.join(['cheeseboard', exp_month, exp_title, date_str, exp_name, 'movie'])
+    gdrive_vid_dir = '/'.join(['cheeseboard', experiment_month, experiment_title, experiment_date, exp_name, 'movie'])
     gdrive_vid_fpath = os.path.join(gdrive_vid_dir, video_filename)
     gdrive_download_file(gdrive_vid_fpath, movie_dir, rclone_config)
 
@@ -69,12 +71,20 @@ if not has_frame:
 #     loc_df = pd.read_csv(loc_filepath)
 
 # Prepare ca img video stream
-gdrive_dated_dir = os.path.join(downsample_subpath, exp_month, exp_title, date_str)
+gdrive_dated_dir = os.path.join(downsample_subpath,  experiment_month, experiment_title, experiment_date)
 local_dated_dir = os.path.join(local_rootdir, gdrive_dated_dir)
-gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal)
-result_dir = os.path.join(local_dated_dir, 'caiman', animal)
+gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal_name)
+result_dir = os.path.join(local_dated_dir, 'caiman', animal_name)
 # Download result files if not stored locally
-cnm_obj = load_hdf5_result(result_dir, gdrive_result_dir, rclone_config)
+cnm_obj = load_hdf5_result(result_dir, gdrive_result_dir, rclone_config, use_filtered=useFiltered)
+
+if len(selected_cell_ids) > 0:
+    selected_cells = np.where(np.isin(cnm_obj.estimates.registered_cell_ids, selected_cell_ids))[0]
+    present_cell_ids = np.isin(selected_cell_ids, cnm_obj.estimates.registered_cell_ids)
+    selected_cell_ids = np.array(selected_cell_ids)[present_cell_ids]
+else:
+    selected_cells = [x for x in range(10, 100, 5)]
+    selected_cell_ids = cnm_obj.estimates.registered_cell_ids[selected_cells]
 
 session_info = load_session_info(result_dir, gdrive_result_dir, rclone_config)
 session_lengths = np.cumsum([0] + session_info['session_lengths'])
@@ -92,11 +102,11 @@ for vid_index in range(1, n_mscam_vids + 1):
                  '__d1_' + str(dims[0]) + '_d2_' + str(dims[1]) + '_d3_1_order_F_frames_' + \
                  str(frames) + '_.mmap'
     remote_mmap_dir = os.path.dirname(session_info['dat_files'][trial - 1])
-    mmap_session_subdir = remote_mmap_dir.split(date_str + '/')[1]
+    mmap_session_subdir = remote_mmap_dir.split(experiment_date + '/')[1]
     local_mmap_dir = os.path.join(local_dated_dir, mmap_session_subdir)
     local_mmap_fpath = os.path.join(local_mmap_dir, mmap_fname)
     if not os.path.isfile(local_mmap_fpath):
-        gdrive_mmap_dir = '/'.join([downsample_subpath, exp_month, exp_title, date_str, mmap_session_subdir])
+        gdrive_mmap_dir = '/'.join([downsample_subpath,  experiment_month, experiment_title, experiment_date, mmap_session_subdir])
         gdrive_mmap_fpath = os.path.join(gdrive_mmap_dir, mmap_fname)
         if gdrive_download_file(gdrive_mmap_fpath, local_mmap_dir, rclone_config):
             local_mmap_fpaths.append(local_mmap_fpath)
@@ -105,18 +115,18 @@ for vid_index in range(1, n_mscam_vids + 1):
 
 local_timestamp_fpath = os.path.join(local_mmap_dir, 'timestamp.dat')
 if not os.path.isfile(local_timestamp_fpath):
-    gdrive_timestamp_dir = '/'.join(['cheeseboard', exp_month, exp_title, date_str, mmap_session_subdir])
+    gdrive_timestamp_dir = '/'.join(['cheeseboard',  experiment_month, experiment_title, experiment_date, mmap_session_subdir])
     gdrive_timestamp_fpath = os.path.join(gdrive_timestamp_dir, 'timestamp.dat')
     gdrive_download_file(gdrive_timestamp_fpath, local_mmap_dir, rclone_config)
 import results_format
-caimg_timestamps = results_format.read_timestamps(local_timestamp_fpath)
+caimg_timestamps, _ = results_format.read_timestamps(local_timestamp_fpath)
 
 # Prepare data frame with tracking positions
-tracking_filename = '_'.join(filter(lambda x: x is not None, [date_str, animal, 'trial', str(trial), 'positions.csv']))
+tracking_filename = '_'.join(filter(lambda x: x is not None, [experiment_date, animal_name, 'trial', str(trial), 'positions.csv']))
 tracking_dir = os.path.join(movie_dir, 'tracking')
 tracking_filepath = os.path.join(tracking_dir, tracking_filename)
 if not os.path.isfile(tracking_filepath):
-    gdrive_tracking_dir = '/'.join(['cheeseboard', exp_month, exp_title, date_str, exp_name, 'movie', 'tracking'])
+    gdrive_tracking_dir = '/'.join(['cheeseboard', experiment_month, experiment_title, experiment_date, exp_name, 'movie', 'tracking'])
     gdrive_tracking_fpath = os.path.join(gdrive_tracking_dir, tracking_filename)
     gdrive_download_file(gdrive_tracking_fpath, tracking_dir, rclone_config)
 tracking_df = pd.read_csv(tracking_filepath)
@@ -133,7 +143,7 @@ caimg_frame_rate = 20
 
 frame_idx = 0
 row_idx = 0
-window_name = '_'.join([date_str, animal, str(trial)])
+window_name = '_'.join([experiment_date, animal_name, str(trial)])
 valid_pos = [(0, 0)] * len(tracking_df)
 pos_idx = 0
 caimg_frame = 0
@@ -153,8 +163,8 @@ writer = FFMpegWriter(fps=15 * 3, metadata=dict(title='Test'))
 fig = plt.figure()
 plt.subplot(2, 1, 1)
 ca_vid_plt = plt.imshow(np.zeros(video_dims).transpose())
-plt.subplot(2, 1, 2)
 
+trace_ax = plt.subplot(2, 1, 2)
 window_sec = 4
 plt.xlim(-window_sec, window_sec)
 C = cnm_obj.estimates.C
@@ -164,13 +174,14 @@ trace_vid_plt = [0] * len(selected_cells)
 contour_colours = dict()
 import matplotlib.colors as mcolors
 for i in range(len(selected_cells)):
-    trace_vid_plt[i], = plt.plot([], [], '-')
+    trace_vid_plt[i], = trace_ax.plot([], [], '-', label=str(selected_cell_ids[i]))
     hexcol = trace_vid_plt[i].get_c()
     contour_colours[i] = np.array(mcolors.hex2color(hexcol)) * 255
 
 ca_max = np.quantile(C[selected_cells,:], 0.995) + len(selected_cells) * 2.0
 ca_min = np.quantile(C[selected_cells,:], 0.05)
 plt.ylim(ca_min, ca_max)
+trace_ax.legend(loc='upper left')
 
 writer.setup(fig, video_traces_outputfile, dpi=500)
 print('Output file: ' + video_traces_outputfile)
@@ -230,7 +241,7 @@ while has_frame:
         #video_writer.write(merged_frame.astype('uint8'))
         writer.grab_frame()
 
-    #k = cv2.waitKey(1) & 0xff
+    #k = cv2.waitKey(100) & 0xff
     #if k == 27:  # ESC
     #    break
 

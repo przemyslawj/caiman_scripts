@@ -103,10 +103,15 @@ def load_session_info(result_dir, gdrive_result_dir, rclone_config):
         return yaml.load(f, Loader=yaml.FullLoader)
 
 
-def load_hdf5_result(result_dir, gdrive_result_dir, rclone_config):
-    h5fpath = os.path.join(result_dir, 'analysis_results.hdf5')
+def load_hdf5_result(result_dir, gdrive_result_dir, rclone_config, use_filtered=False):
+    hdf5_filename = 'analysis_results.hdf5'
+    if use_filtered:
+        hdf5_filename = 'analysis_results_filtered.hdf5'
+        result_dir = os.path.join(result_dir, 'filtered')
+        gdrive_result_dir = os.path.join(gdrive_result_dir, 'filtered')
+    h5fpath = os.path.join(result_dir, hdf5_filename)
     if not os.path.isfile(h5fpath):
-        success = gdrive_download_file(gdrive_result_dir + '/analysis_results.hdf5', result_dir, rclone_config)
+        success = gdrive_download_file(os.path.join(gdrive_result_dir, hdf5_filename), result_dir, rclone_config)
         if not success:
             return None
 
