@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import os
 from scipy.io import savemat
@@ -36,6 +37,13 @@ def concat_session_timestamps(session_info, rootdir, gdrive_subdir, rclone_confi
             gdrive_download_file(gdrive_dat_fpath, os.path.dirname(dat_file), rclone_config)
         this_mstime, camNumber = read_timestamps(dat_file)
         this_mstime = this_mstime[0:session_info['session_lengths'][i]]
+        missing_len = len(this_mstime) - session_info['session_lengths'][i]
+        if missing_len > 0:
+            logging.warn('Too few timestamps recorded in file %s, missing %d timestamps', dat_file, missing_len)
+            avg_timediff = int(np.mean(np.diff(this_mstime)))
+            this_mstime = np.concatenate([this_mstime,
+                np.linspace(avg_timediff, avg_timediff * missing_len, avg_timediff) + this_mstime[-1]])
+
         mstime = np.concatenate([mstime, this_mstime])
         i += 1
 

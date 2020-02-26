@@ -5,6 +5,7 @@
 EXP_MONTH=2019-08
 EXP_TITLE=habituation
 dry_run=0
+cnmfe_only=0
 
 
 while [[ $# -gt 0 ]]; do
@@ -12,6 +13,10 @@ while [[ $# -gt 0 ]]; do
     case $key in
         --dry_run)
         dry_run=1
+        shift # past argument
+        ;;
+        --cnmfe_only)
+        cnmfe_only=1
         shift # past argument
         ;;
         --animals)
@@ -40,7 +45,7 @@ done
 echo "Starting pipeline for exp_month=${EXP_MONTH} exp_title=${EXP_TITLE}"
 echo "                      animals=${animals} dates=${dates}"
 
-conda activate caiman
+#conda activate caiman
 for exp_date in ${dates[*]}; do
     for animal in ${animals[*]}; do
         export ANIMAL=$animal
@@ -55,30 +60,36 @@ for exp_date in ${dates[*]}; do
             continue
         fi
 
-        ./gdrive_download.sh
+        if [ $cnmfe_only -eq 0 ]; then
+            ./gdrive_download.sh
 
-        python downsample.py
-        status=$?
-        if [ $status -ne 0 ]; then
-            exit $status
+            python downsample.py
+            status=$?
+            if [ $status -ne 0 ]; then
+                exit $status
+            fi
+
+            time python caiman_mc.py
+            status=$?
+            if [ $status -ne 0 ]; then
+                exit $status
+            fi
+
+            python memmap_mc_files.py
+            status=$?
+            if [ $status -ne 0 ]; then
+                exit $status
+            fi
+
+            python create_sessions_info.py
+            status=$?
+            if [ $status -ne 0 ]; then
+                exit $status
+            fi
         fi
 
-        time python caiman_mc.py
-        status=$?
-        if [ $status -ne 0 ]; then
-            exit $status
-        fi
-
-        python memmap_mc_files.py
-        status=$?
-        if [ $status -ne 0 ]; then
-            exit $status
-        fi
-
-        python create_sessions_info.py
-        status=$?
-        if [ $status -ne 0 ]; then
-            exit $status
+        if [ $cnmfe_only -eq 1 ]; then
+            ./gdrive_download_processed.sh
         fi
 
         time python run_cnmfe.py

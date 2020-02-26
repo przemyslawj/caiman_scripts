@@ -9,16 +9,17 @@ import video
 from miniscope_file import gdrive_download_file, load_session_info
 
 # Choose video
-exp_month = '2019-08'
-exp_title = 'learning'
-exp_date = '2019-08-30'
-animal = 'E-BL'
-rootdir = '/home/przemek/neurodata/'
+exp_month = '2020-01'
+exp_title = 'habituation'
+exp_date = '2020-01-29'
+animal = 'G-BR'
+#rootdir = '/mnt/DATA/Prez/'
+rootdir = '/home/prez/neurodata'
 gdrive_subdir = 'cheeseboard-down/down_2'
 pwRigid = True
 
 vid_index = 1
-session_index = 2
+session_index = 1
 
 rclone_config = os.environ['RCLONE_CONFIG']
 

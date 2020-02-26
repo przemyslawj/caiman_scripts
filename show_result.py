@@ -13,38 +13,35 @@ from miniscope_file import gdrive_download_file, load_session_info, load_hdf5_re
 from load_args import *
 
 # Choose video
-exp_month = '2020-01'
-exp_title = 'habituation'
-exp_date = '2020-01-29'
-animal = 'L-TL'
+trial_no = int(os.environ['TRIAL_NO'])
 
 
 vid_index = 1
-session_index = 1
 reevaluate = False
+filtered = False
 
 
 """ Prepare data """
-gdrive_dated_dir = os.path.join(downsample_subpath, exp_month, exp_title, exp_date)
+gdrive_dated_dir = os.path.join(downsample_subpath, experiment_month, experiment_title, experiment_date)
 local_dated_dir = os.path.join(local_rootdir, gdrive_dated_dir)
-gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal)
-result_dir = os.path.join(local_dated_dir, 'caiman', animal)
+gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal_name)
+result_dir = os.path.join(local_dated_dir, 'caiman', animal_name)
 # Download result files if not stored locally
-cnm_obj = load_hdf5_result(result_dir, gdrive_result_dir, rclone_config)
+cnm_obj = load_hdf5_result(result_dir, gdrive_result_dir, rclone_config, use_filtered=filtered)
 
 session_info = load_session_info(result_dir, gdrive_result_dir, rclone_config)
 session_lengths = np.cumsum([0] + session_info['session_lengths'])
-session_trace_offset = session_lengths[session_index - 1]
+session_trace_offset = session_lengths[trial_no - 1]
 
 dims = cnm_obj.estimates.dims
 mmap_prefix = 'els'
 mmap_fname = 'msCam' + str(vid_index) + '_' + mmap_prefix + '__d1_' + str(dims[0]) + '_d2_' + str(dims[1]) + '_d3_1_order_F_frames_1000_.mmap'
-remote_mmap_dir = os.path.dirname(session_info['dat_files'][session_index - 1])
-mmap_session_subdir = remote_mmap_dir.split(exp_date + '/')[1]
+remote_mmap_dir = os.path.dirname(session_info['dat_files'][trial_no - 1])
+mmap_session_subdir = remote_mmap_dir.split(experiment_date + '/')[1]
 local_mmap_dir = os.path.join(local_dated_dir, mmap_session_subdir)
 local_mmap_fpath = os.path.join(local_mmap_dir, mmap_fname)
 if not os.path.isfile(local_mmap_fpath):
-    gdrive_mmap_dir = '/'.join([downsample_subpath, exp_month, exp_title, exp_date, mmap_session_subdir])
+    gdrive_mmap_dir = '/'.join([downsample_subpath, experiment_month, experiment_title, experiment_date, mmap_session_subdir])
     gdrive_mmap_fpath = os.path.join(gdrive_mmap_dir, mmap_fname)
     gdrive_download_file(gdrive_mmap_fpath, local_mmap_dir, rclone_config)
 
@@ -54,7 +51,7 @@ eval_params = {
     'use_cnn': False,
     'rval_thr': 0.8,
     'rval_lowest': -1.0,
-    'min_SNR': 6,
+    'min_SNR': 8,
     'SNR_lowest': 2.5,
 }
 max_thr = 0.45
@@ -67,15 +64,17 @@ dca1_neuron_sizes = {
     'max': 110,
     'min': 20
 }
-neuron_size_params = vca1_neuron_sizes
+neuron_size_params = dca1_neuron_sizes
 
 opts = params.CNMFParams(params_dict=eval_params)
 A = cnm_obj.estimates.A
 frames = session_trace_offset + range((vid_index - 1) * 1000, vid_index * 1000)
 images = video.load_images(local_mmap_fpath)
-cnm_obj.estimates.threshold_spatial_components(maxthr=max_thr)
-cnm_obj.estimates.remove_small_large_neurons(min_size_neuro=neuron_size_params['min'],
-                                             max_size_neuro=neuron_size_params['max'])
+if not filtered:
+    cnm_obj.estimates.threshold_spatial_components(maxthr=max_thr)
+    cnm_obj.estimates.remove_small_large_neurons(min_size_neuro=neuron_size_params['min'],
+                                                max_size_neuro=neuron_size_params['max'])
+
 idx_components_bad = cnm_obj.estimates.idx_components_bad
 if reevaluate:
     print('evaluating components')
@@ -172,7 +171,7 @@ def save_movie(estimate, imgs, Y_res, frames, q_max=99.5, q_min=2, bpx=0, thr=0.
 from cnmfe_model import model_residual
 Y_res = model_residual(images, cnm_obj, 2, frames)
 
-avifilename = 'Session' + str(session_index) + '_msCam' + str(vid_index) + '_result.avi'
+avifilename = 'Session' + str(trial_no) + '_msCam' + str(vid_index) + '_result.avi'
 save_movie(cnm_obj.estimates, images, Y_res, frames, q_max=75, magnification=2,
            bpx=0, thr=0.6, gain=0.4,
            movie_name=os.path.join(result_dir, avifilename),

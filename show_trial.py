@@ -1,7 +1,10 @@
-import caiman as cm
 import cv2
+import logging
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 from matplotlib.animation import FFMpegWriter
 
@@ -9,6 +12,8 @@ from miniscope_file import gdrive_download_file, load_session_info, load_hdf5_re
 from load_args import *
 import video
 
+
+logging.basicConfig(level=logging.INFO)
 
 trial = int(os.environ['TRIAL_NO'])
 selected_cell_ids_str = optional_arg('CELL_IDS', '')
@@ -80,11 +85,8 @@ cnm_obj = load_hdf5_result(result_dir, gdrive_result_dir, rclone_config, use_fil
 
 if len(selected_cell_ids) > 0:
     selected_cells = np.where(np.isin(cnm_obj.estimates.registered_cell_ids, selected_cell_ids))[0]
-    present_cell_ids = np.isin(selected_cell_ids, cnm_obj.estimates.registered_cell_ids)
-    selected_cell_ids = np.array(selected_cell_ids)[present_cell_ids]
 else:
     selected_cells = [x for x in range(10, 100, 5)]
-    selected_cell_ids = cnm_obj.estimates.registered_cell_ids[selected_cells]
 
 session_info = load_session_info(result_dir, gdrive_result_dir, rclone_config)
 session_lengths = np.cumsum([0] + session_info['session_lengths'])
@@ -161,8 +163,9 @@ caimg_timestamp = -1
 
 writer = FFMpegWriter(fps=15 * 3, metadata=dict(title='Test'))
 fig = plt.figure()
-plt.subplot(2, 1, 1)
+vid_ax = plt.subplot(2, 1, 1)
 ca_vid_plt = plt.imshow(np.zeros(video_dims).transpose())
+vid_ax.set_axis_off()
 
 trace_ax = plt.subplot(2, 1, 2)
 window_sec = 4
@@ -172,16 +175,26 @@ cell_contours = video.create_contours(cnm_obj.estimates.A[:,selected_cells],
                                       ca_movie.shape[1:], thr=0.75)
 trace_vid_plt = [0] * len(selected_cells)
 contour_colours = dict()
-import matplotlib.colors as mcolors
+# length of the plotted trace. Extend the window by 1 sec because the timestamps aren't evenly spread.
+trace_len = 2 * (window_sec + 1) * caimg_frame_rate + 1
 for i in range(len(selected_cells)):
-    trace_vid_plt[i], = trace_ax.plot([], [], '-', label=str(selected_cell_ids[i]))
+    cell_label = str(selected_cells[i])
+    if useFiltered:
+        cell_label = str(cnm_obj.estimates.registered_cell_ids[selected_cells[i]])
+
+    trace_vid_plt[i], = trace_ax.plot(np.arange(trace_len),
+                                      np.arange(trace_len),
+                                      '-',
+                                      label=cell_label)
     hexcol = trace_vid_plt[i].get_c()
     contour_colours[i] = np.array(mcolors.hex2color(hexcol)) * 255
 
 ca_max = np.quantile(C[selected_cells,:], 0.995) + len(selected_cells) * 2.0
 ca_min = np.quantile(C[selected_cells,:], 0.05)
 plt.ylim(ca_min, ca_max)
-trace_ax.legend(loc='upper left')
+trace_ax.legend(loc='upper left', fontsize='x-small')
+trace_ax.axes.get_yaxis().set_visible(False)
+trace_ax.patch.set_visible(False)
 
 writer.setup(fig, video_traces_outputfile, dpi=500)
 print('Output file: ' + video_traces_outputfile)
@@ -235,7 +248,14 @@ while has_frame:
     indices, ts = get_centered_timestamps(caimg_timestamps, caimg_frame_index - 1)
     for cell_i, cell in enumerate(selected_cells):
         shifted_trace = C[cell, np.array(indices) + session_trace_offset] + cell_i * 2.0
-        trace_vid_plt[cell_i].set_data(ts, shifted_trace)
+        trace_len_diff = trace_len - len(shifted_trace)
+        cell_ts = ts
+        if trace_len_diff > 0:
+            logging.debug('Expanding trace len by %d', trace_len_diff)
+            cell_ts = np.append(ts, [window_sec + np.arange(trace_len_diff)])
+            shifted_trace = np.append(shifted_trace, [0] * trace_len_diff)
+
+        trace_vid_plt[cell_i].set_data(cell_ts, shifted_trace)
 
     if pos_idx > 0:
         #video_writer.write(merged_frame.astype('uint8'))

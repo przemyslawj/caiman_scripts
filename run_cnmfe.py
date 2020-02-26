@@ -21,7 +21,6 @@ from caiman.utils.visualization import inspect_correlation_pnr
 
 
 logging.basicConfig(level=logging.INFO)
-session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
 
 """# Prepare data"""
 c, dview, n_processes = cm.cluster.setup_cluster(

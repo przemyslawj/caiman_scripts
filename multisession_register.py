@@ -14,11 +14,13 @@ logging.basicConfig(level=logging.INFO)
 # Choose sessions
 experiment_month = '2019-08'
 exp_title_dates = {
-    'habituation': ['2019-08-27', '2019-08-28', '2019-08-29'],
-    'learning': ['2019-08-30', '2019-08-31', '2019-09-01']
+    #'habituation': ['2019-08-27', '2019-08-28', '2019-08-29'],
+    #'learning': ['2019-08-30', '2019-08-31', '2019-09-01']
+    'habituation': ['2019-08-29'],
+    'learning': ['2019-08-31', '2019-09-04']
 }
 
-animal = 'F-TL'
+animal = 'E-TR'
 
 filteredComponents = False
 
