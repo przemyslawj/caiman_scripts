@@ -19,16 +19,16 @@ vca1_neuron_sizes = {
     'min': 30
 }
 dca1_neuron_sizes = {
-    'max': 110,
+    'max': 160,
     'min': 20
 }
-neuron_size_params = vca1_neuron_sizes
+neuron_size_params = dca1_neuron_sizes
 
 components_quality_params = {
     'use_cnn': False,
     'rval_thr': 0.8,
     'rval_lowest': -1.0,
-    'min_SNR': 6,
+    'min_SNR': 8,
     'SNR_lowest': 2.5,
 }
 

@@ -6,6 +6,7 @@ EXP_MONTH=2019-08
 EXP_TITLE=habituation
 dry_run=0
 cnmfe_only=0
+rm_dir=1
 
 
 while [[ $# -gt 0 ]]; do
@@ -17,6 +18,10 @@ while [[ $# -gt 0 ]]; do
         ;;
         --cnmfe_only)
         cnmfe_only=1
+        shift # past argument
+        ;;
+        --no_rm)
+        rm_dir=0
         shift # past argument
         ;;
         --animals)
@@ -101,7 +106,9 @@ for exp_date in ${dates[*]}; do
 
         ./gdrive_upload.sh
 
-        rm -rf ${LOCAL_ROOTDIR}/${DOWNSAMPLE_SUBPATH}/${EXP_MONTH}/${EXP_TITLE}/${EXP_DATE}
+		if [ $rm_dir -eq 1 ]; then
+          rm -rf ${LOCAL_ROOTDIR}/${DOWNSAMPLE_SUBPATH}/${EXP_MONTH}/${EXP_TITLE}/${EXP_DATE}
+	    fi
     done
 
 done
