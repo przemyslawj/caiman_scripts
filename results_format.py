@@ -31,6 +31,8 @@ def concat_session_timestamps(session_info, rootdir, gdrive_subdir, rclone_confi
     mstime = np.array([], dtype=np.int)
     i = 0
     for dat_file in session_info['dat_files']:
+        #TODO: temporary replacement until session_info.yaml files updated
+        dat_file = dat_file.replace('/test/', '/beforetest/')
         if not os.path.isfile(dat_file):
             gdrive_dat_fpath = dat_file[dat_file.find(gdrive_subdir):]
             dat_file = os.path.join(rootdir, gdrive_dat_fpath)

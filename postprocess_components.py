@@ -22,7 +22,7 @@ dca1_neuron_sizes = {
     'max': 160,
     'min': 20
 }
-neuron_size_params = dca1_neuron_sizes
+neuron_size_params = vca1_neuron_sizes
 
 components_quality_params = {
     'use_cnn': False,
@@ -82,10 +82,17 @@ for exp_title in exp_titles:
                 print('Template file not found, skipping exp_date=' + exp_date)
                 continue
 
+        # Create a template using spatial footprints of the cells
+        # Apply a threshold masks on spatial images
+        A = cnm_obj.estimates.A
+        A1 = np.stack([a * (a > registration_params['max_thr'] * a.max()) for a in A.toarray().T]).T
+        # Calculate mean spatial footprint over all cells
+        footprint_template = A1.mean(axis=1).reshape(cnm_obj.dims[::-1]).transpose()
+
         session_objs.append({
             'cnm_obj': cnm_obj,
             'session_info': load_session_info(result_dir, gdrive_result_dir, rclone_config),
-            'template': np.load(rigid_template_fpath),
+            'template': footprint_template,
             'gdrive_result_dir': gdrive_result_dir,
             'result_dir': result_dir,
             'exp_date': exp_date

@@ -94,9 +94,9 @@ This creates the h5 files with the extracted signal in subdirectory `caiman` loc
 ## Postprocess data
 1. Prepare environment. On linux:
 ```
-  source vars_setup.sh
   export EXP_MONTH=XXXX-XX
   export ANIMAL=XX
+  source vars_setup.sh
 ```
 2. Run postprocessing
 ```

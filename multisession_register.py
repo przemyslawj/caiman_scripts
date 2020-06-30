@@ -16,13 +16,17 @@ experiment_month = '2019-08'
 exp_title_dates = {
     #'habituation': ['2019-08-27', '2019-08-28', '2019-08-29'],
     #'learning': ['2019-08-30', '2019-08-31', '2019-09-01']
-    'habituation': ['2019-08-29'],
-    'learning': ['2019-08-31', '2019-09-04']
+    #'habituation': ['2019-08-29'],
+    'learning': ['2019-09-04', '2019-09-06']
+    #'learning': ['2020-02-04', '2020-02-06', '2020-02-08', '2020-02-11']
 }
 
-animal = 'E-TR'
+animal = 'F-TL'
 
-filteredComponents = False
+filteredComponents = True
+max_thr = 0.45
+thresh_cost = 0.7
+max_dist = 10
 
 spatial = []
 templates = []
@@ -51,12 +55,17 @@ for exp_title in exp_title_dates.keys():
         rigid_template_fpath = result_dir + '/mc_rigid_template.npy'
         if not os.path.isfile(rigid_template_fpath):
             gdrive_download_file(gdrive_result_dir + '/mc_rigid_template.npy', result_dir, rclone_config)
-        templates.append(np.load(rigid_template_fpath))
+        rigid_template = np.load(rigid_template_fpath)
+        #templates.append(rigid_template)
+        # Create a template using spatial footprints of the cells
+        # Apply a threshold masks on spatial images
+        A1 = np.stack([a * (a > max_thr * a.max()) for a in spatial[-1].toarray().T]).T
+        # Calculate mean spatial footprint over all cells
+        footprint_template = A1.mean(axis=1).reshape(cnm_obj.dims[::-1]).transpose()
+        templates.append(footprint_template)
         dims = cnm_obj.dims
 
-max_thr = 0.45
-thresh_cost = 0.7
-max_dist = 10
+
 spatial_union, assignments, mappings = register_multisession(A=spatial, dims=dims, templates=templates,
                                                              thresh_cost=thresh_cost,
                                                              max_dist=max_dist,

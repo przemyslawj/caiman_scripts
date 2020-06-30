@@ -18,7 +18,7 @@ trial_no = int(os.environ['TRIAL_NO'])
 
 vid_index = 1
 reevaluate = False
-filtered = False
+filtered = True
 
 
 """ Prepare data """
@@ -76,6 +76,9 @@ if not filtered:
                                                 max_size_neuro=neuron_size_params['max'])
 
 idx_components_bad = cnm_obj.estimates.idx_components_bad
+if idx_components_bad is None:
+    idx_components_bad = []
+
 if reevaluate:
     print('evaluating components')
     from caiman.cluster import setup_cluster

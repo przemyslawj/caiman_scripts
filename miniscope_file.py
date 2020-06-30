@@ -116,7 +116,11 @@ def load_hdf5_result(result_dir, gdrive_result_dir, rclone_config, use_filtered=
             return None
 
     from caiman.source_extraction.cnmf.cnmf import load_CNMF
-    return load_CNMF(h5fpath)
+    try:
+        return load_CNMF(h5fpath)
+    except OSError as e:
+        logging.error('Failed to open file: %s', h5fpath)
+        raise e
 
 
 def load_msresult(result_dir, gdrive_result_dir, rclone_config):
