@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 exp_titles = ['habituation', 'learning']
 
 vca1_neuron_sizes = {
-    'max': 200,
+    'max': 250,
     'min': 30
 }
 dca1_neuron_sizes = {
@@ -28,7 +28,7 @@ components_quality_params = {
     'use_cnn': False,
     'rval_thr': 0.8,
     'rval_lowest': -1.0,
-    'min_SNR': 8,
+    'min_SNR': 6,
     'SNR_lowest': 2.5,
 }
 
@@ -140,3 +140,4 @@ for sess_i, session in enumerate(session_objs):
                                       extraFields={'cellId': mappings[sess_i]})
     gdrive_upload_file(ms_fpath, gdrive_upload_dir, rclone_config)
     gdrive_upload_file(sfp_fpath, gdrive_upload_dir, rclone_config)
+

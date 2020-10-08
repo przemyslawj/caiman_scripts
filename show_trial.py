@@ -24,7 +24,7 @@ if len(selected_cell_ids_str) > 0:
 
 useFiltered = True
 
-exp_name = 'trial'
+exp_name = 'beforetest'
 dated_dir = os.path.join(local_rootdir, 'cheeseboard', experiment_month, experiment_title, experiment_date, exp_name)
 
 
@@ -57,7 +57,11 @@ def stream_from_file(video_file):
 
 
 # Prepare tracking video stream
-video_filename = '_'.join(filter(lambda x: x is not None, [experiment_date, animal_name, 'trial', str(trial)])) + '.avi'
+
+experiment_date_prefix = experiment_date
+if exp_name == 'beforetest':
+    experiment_date_prefix = experiment_date + '-beforetest'
+video_filename = '_'.join(filter(lambda x: x is not None, [experiment_date_prefix, animal_name, 'trial', str(trial)])) + '.avi'
 movie_dir = os.path.join(dated_dir, 'movie')
 video_filepath = os.path.join(movie_dir, video_filename)
 if not os.path.isfile(video_filepath):

@@ -12,20 +12,21 @@ from load_args import *
 logging.basicConfig(level=logging.INFO)
 
 # Choose sessions
-experiment_month = '2019-08'
+experiment_month = '2019-07'
 exp_title_dates = {
     #'habituation': ['2019-08-27', '2019-08-28', '2019-08-29'],
     #'learning': ['2019-08-30', '2019-08-31', '2019-09-01']
     #'habituation': ['2019-08-29'],
-    'learning': ['2019-09-04', '2019-09-06']
-    #'learning': ['2020-02-04', '2020-02-06', '2020-02-08', '2020-02-11']
+    #'learning': ['2019-09-04', '2019-09-06']
+    #'learning': ['2020-02-06', '2020-02-08', '2020-02-11']
+    'learning': ['2019-07-28', '2019-07-30', '2019-08-01']
 }
 
-animal = 'F-TL'
+animal = 'B-BL'
 
 filteredComponents = True
 max_thr = 0.45
-thresh_cost = 0.7
+thresh_cost = 0.75
 max_dist = 10
 
 spatial = []
