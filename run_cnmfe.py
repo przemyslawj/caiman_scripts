@@ -147,7 +147,7 @@ logging.info('Finished CNMF')
 # - a minimum peak SNR is required over the length of a transient
 # - each shape passes a CNN based classifier
 
-min_SNR = 3  # adaptive way to set threshold on the transient size
+min_SNR = 2.5  # adaptive way to set threshold on the transient size
 r_values_min = 0.8  # threshold on space consistency (if you lower more components be accepted, potentially with
 # worst quality)
 logging.info(' ***** ')
@@ -251,3 +251,4 @@ if save_mat:
 
 # Stop the cluster
 cm.stop_server(dview=dview)
+

@@ -17,9 +17,9 @@ session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_n
 mc_fnames = []
 max_bord_px = 0
 for s_fpath in session_fpaths:
-    session_memmap = miniscope_file.get_memmap_files(s_fpath, pwRigid=doPwRigid)
-    session_vids = miniscope_file.list_vidfiles(s_fpath)
-    mc_stats_fpath = miniscope_file.get_timestamped_path(s_fpath) + '/mc_stats.yaml'
+    session_memmap = miniscope_file.get_memmap_files(s_fpath, doPwRigid, vid_prefix)
+    session_vids = miniscope_file.list_vidfiles(s_fpath, vid_prefix)
+    mc_stats_fpath = miniscope_file.get_miniscope_vids_path(s_fpath) + '/mc_stats.yaml'
     if not os.path.isfile(mc_stats_fpath):
         raise FileNotFoundError('Missing file for motion correction stats for session: ' + s_fpath)
     if len(session_memmap) < len(session_vids):

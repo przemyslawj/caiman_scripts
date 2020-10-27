@@ -6,6 +6,7 @@ import video
 from datetime import datetime
 import logging
 import os
+import pandas as pd
 import time
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -33,11 +34,11 @@ now = datetime.now()
 analysis_time = now.strftime("%Y-%m-%d %H:%M") # This is to register when the analysis was performed
 print('Analysis started on ' + analysis_time)
 
-analysis_start = time.time() # This is to register the time spent analyzing
+analysis_start = time.time()
 
-#%% start a cluster for parallel processing (if a cluster already exists it will be closed and a new session will be opened)
-#if 'dview' in locals():
-#    cm.stop_server(dview=dview)
+#if a cluster already exists it will be closed and a new session will be opened
+if 'dview' in locals():
+    cm.stop_server(dview=dview)
 c, dview, n_processes = cm.cluster.setup_cluster(
     backend='local', n_processes=ncores, single_thread=False)
 
@@ -52,7 +53,6 @@ frate = 20                       # movie frame rate
 pw_rigid = False         # flag for performing piecewise-rigid motion correction (otherwise just rigid)
 #gSig_filt = (8, 8)       # size of high pass spatial filtering, used in 1p data
 gSig_filt = (3, 3)       # size of high pass spatial filtering, used in 1p data
-gSiz = (7, 7)
 max_shifts = (8, 8)      # maximum allowed rigid shift
 strides = (48, 48)       # start a new patch for pw-rigid motion correction every x pixels
 overlaps = (16, 16)      # overlap between patches (size of patch strides+overlaps)
@@ -63,6 +63,25 @@ splits_rig = 2
 splits_els = 2
 upsample_factor_grid = 4  # upsample factor to avoid smearing when merging patches
 max_deviation_rigid = 3  # maximum deviation allowed for patch with respect to rigid shifts
+
+
+# ## Read CNMFE params
+local_params_fpath = '/'.join([
+    local_rootdir,
+    downsample_subpath,
+    experiment_month,
+    'cnmfe_params.csv'])
+
+if os.path.isfile(local_params_fpath):
+    params_csv = pd.read_csv(local_params_fpath)
+    animal_params = params_csv[params_csv['animal'] == animal_name]
+else:
+    animal_params = []
+if len(animal_params) > 0:
+    logging.info('Using CNMFE params file for motion correction')
+    gSig_filt = (animal_params['gSig_filt'].values[0], animal_params['gSig_filt'].values[0])
+else:
+    logging.info('Using default CNMFE params')
 
 
 def get_mean_frame(f):
@@ -169,13 +188,13 @@ if os.path.isfile(rigid_template_fpath + '.npy') and not rerun:
     mc_rigid_template = np.load(rigid_template_fpath + '.npy')
 
 for s_fpath in session_fpaths:
-    session_vids = miniscope_file.list_vidfiles(s_fpath)
+    session_vids = miniscope_file.list_vidfiles(s_fpath, vid_prefix)
     if shortRun:
         session_vids = [session_vids[0]]
-    mc_stats_fpath = miniscope_file.get_timestamped_path(s_fpath) + '/mc_stats.yaml'
+    mc_stats_fpath = miniscope_file.get_miniscope_vids_path(s_fpath) + '/mc_stats.yaml'
 
     # If directory already processed
-    memmap_files = miniscope_file.get_memmap_files(s_fpath, pwRigid=doPwRigid)
+    memmap_files = miniscope_file.get_memmap_files(s_fpath, doPwRigid, vid_prefix)
     if (len(memmap_files) >= len(session_vids)
             and (mc_rigid_template is not None)
             and (os.path.isfile(mc_stats_fpath)))\
@@ -219,3 +238,4 @@ for s_fpath in session_fpaths:
         backend='local', n_processes=n_processes, single_thread=False)
 
 cm.stop_server(dview=dview)
+

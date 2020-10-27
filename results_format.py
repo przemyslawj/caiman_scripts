@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+import pandas as pd
 import os
 from scipy.io import savemat
 from scipy.ndimage import center_of_mass
@@ -18,30 +19,38 @@ def readSFP(cnm):
     return SFP
 
 
-def read_timestamps(dat_file):
+def read_dat_timestamps(dat_file):
     with open(dat_file) as f:
-        camNum, frameNum, sysClock, buffer = np.loadtxt(f, dtype='float', comments='#', skiprows=1, unpack=True)
+        camNum, frameNum, sysClock, buffer_ = np.loadtxt(f, dtype='float', comments='#', skiprows=1, unpack=True)
     camNumber = camNum[0]
     mstime_idx = np.where(camNum == camNumber)
     this_mstime = sysClock[mstime_idx]
     return this_mstime, camNumber
 
+def read_timestamps(timestamp_file):
+    if timestamp_file.endswith('.dat'):
+        return read_dat_timestamps(timestamp_file)
+    dat = pd.read_csv(timestamp_file)
+    ts = dat['Time Stamp (ms)'].values
+    ts[ts < 0] = 0
+    return ts, [0] * dat.shape[0]
+
 
 def concat_session_timestamps(session_info, rootdir, gdrive_subdir, rclone_config):
     mstime = np.array([], dtype=np.int)
     i = 0
-    for dat_file in session_info['dat_files']:
+    for timestamp_file in session_info['timestamp_files']:
         #TODO: temporary replacement until session_info.yaml files updated
-        dat_file = dat_file.replace('/test/', '/beforetest/')
-        if not os.path.isfile(dat_file):
-            gdrive_dat_fpath = dat_file[dat_file.find(gdrive_subdir):]
-            dat_file = os.path.join(rootdir, gdrive_dat_fpath)
-            gdrive_download_file(gdrive_dat_fpath, os.path.dirname(dat_file), rclone_config)
-        this_mstime, camNumber = read_timestamps(dat_file)
+        timestamp_file = timestamp_file.replace('/test/', '/beforetest/')
+        if not os.path.isfile(timestamp_file):
+            gdrive_dat_fpath = timestamp_file[timestamp_file.find(gdrive_subdir):]
+            timestamp_file = os.path.join(rootdir, gdrive_dat_fpath)
+            gdrive_download_file(gdrive_dat_fpath, os.path.dirname(timestamp_file), rclone_config)
+        this_mstime, camNumber = read_timestamps(timestamp_file)
         this_mstime = this_mstime[0:session_info['session_lengths'][i]]
         missing_len = len(this_mstime) - session_info['session_lengths'][i]
         if missing_len > 0:
-            logging.warn('Too few timestamps recorded in file %s, missing %d timestamps', dat_file, missing_len)
+            logging.warn('Too few timestamps recorded in file %s, missing %d timestamps', timestamp_file, missing_len)
             avg_timediff = int(np.mean(np.diff(this_mstime)))
             this_mstime = np.concatenate([this_mstime,
                 np.linspace(avg_timediff, avg_timediff * missing_len, avg_timediff) + this_mstime[-1]])
@@ -89,3 +98,4 @@ def save_matlab(cnm, session_info, target_dir, images, mstime, camNumber, extraF
     savemat(target_dir + '/ms.mat', {'ms': results_dict})
 
     return target_dir + '/ms.mat', target_dir + '/SFP.mat'
+

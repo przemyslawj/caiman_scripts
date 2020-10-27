@@ -57,7 +57,7 @@ def create_contours(A, frame_dims, magnification=1, bpx=0, thr=0.8):
             a = cv2.resize(a, None, fx=magnification, fy=magnification,
                            interpolation=cv2.INTER_LINEAR)
         ret, thresh = cv2.threshold(a, thr * np.max(a), 1., 0)
-        contour, hierarchy = cv2.findContours(
+        img, contour, hierarchy = cv2.findContours(
             thresh.astype('uint8'), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         contours = []
         contours.append(contour)

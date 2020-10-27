@@ -5,8 +5,10 @@
 EXP_MONTH=2019-08
 EXP_TITLE=habituation
 dry_run=0
+download_files=1
 cnmfe_only=0
 rm_dir=1
+rm_noise=1
 
 
 while [[ $# -gt 0 ]]; do
@@ -20,8 +22,16 @@ while [[ $# -gt 0 ]]; do
         cnmfe_only=1
         shift # past argument
         ;;
+        --no_download)
+        download_files=0
+        shift # past argument
+        ;;
         --no_rm)
         rm_dir=0
+        shift # past argument
+        ;;
+        --no_noise)
+        rm_noise=0
         shift # past argument
         ;;
         --animals)
@@ -66,9 +76,19 @@ for exp_date in ${dates[*]}; do
         fi
 
         if [ $cnmfe_only -eq 0 ]; then
-            ./gdrive_download.sh
+            if [ $download_files -eq 1 ]; then
+              ./gdrive_download.sh
+            fi
 
-            python downsample.py
+            python downsample2.py
+            status=$?
+            if [ $status -ne 0 ]; then
+                exit $status
+            fi
+
+            if [ $rm_noise -eq 1 ]; then
+                time python remove_noise.py
+            fi
             status=$?
             if [ $status -ne 0 ]; then
                 exit $status

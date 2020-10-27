@@ -1,13 +1,15 @@
-import miniscope_file
+import logging
+import cv2
+import numpy as np
 import pandas as pd
 
-from moviepy.editor import VideoFileClip
-from moviepy.video.fx.all import crop
+import miniscope_file
 from load_args import *
 
+logging.basicConfig(level=logging.INFO)
 replaceVideo = True
 
-print('local miniscope path: ' + local_miniscope_path)
+logging.info('local miniscope path: ' + local_miniscope_path)
 
 local_rois_fpath = '/'.join([
     local_rootdir,
@@ -26,20 +28,48 @@ width = x2 - x1
 y1 = animal_roi['y1'].values[0]
 y2 = animal_roi['y2'].values[0]
 height = y2 - y1
-down_size = [width / spatial_downsampling, height / spatial_downsampling]
+down_cols = int(width / spatial_downsampling)
+down_rows = int(height / spatial_downsampling)
 
 session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
 for s_fpath in session_fpaths:
-    vids_fpath = miniscope_file.list_vidfiles(s_fpath, vid_prefix='msCam')
+    vids_fpath = miniscope_file.list_vidfiles(s_fpath, vid_prefix)
     for video in vids_fpath:
-        clip = VideoFileClip(video)
-        cropped = crop(clip, x1, y1, x2, y2)
-        if cropped.size != down_size:
-            resized_clip = cropped.resize(height=down_size[1], width=down_size[0])
+        cap = cv2.VideoCapture(video)
+        if not cap.isOpened():
+            raise IOError('Failed to open input video file ' + video)
+        ret, frame = cap.read()
+        if not ret:
+            raise IOError('Failed to read first frame of input video file ' + video)
+        rows, cols = frame.shape[:2]
+        logging.debug('Input video shape: (%d, %d)', rows, cols)
+        output_vid_path = video[:-4] + '_down.avi'
+        if (cols, rows) != (down_cols, down_rows):
+            logging.info('Downsampling and cropping file: ' + video)
+            fourcc = cv2.VideoWriter_fourcc(*'GREY')
+            vid_writer = cv2.VideoWriter(output_vid_path,
+                                         fourcc, 60, (down_cols, down_rows),
+                                         isColor=False)
+            logging.info('Cropped and resized output video shape: (%d, %d)', down_cols, down_rows)
+            while ret:
+                cropped = frame[y1:y2, x1:x2, 1]
+                logging.debug('Cropped shape: %s', str(cropped.shape))
+                if spatial_downsampling > 1:
+                    resized = cv2.resize(cropped, (down_cols, down_rows))
+                else:
+                    resized = cropped
+                resized = np.uint8(resized)
+                logging.debug('Resized shape: %s', str(resized.shape))
+                vid_writer.write(resized)
+                ret, frame = cap.read()
+
+            vid_writer.release()
+
             if replaceVideo:
                 os.remove(video)
-            else:
-                video = video[:-4] + '_down.avi'
-            resized_clip.write_videofile(video, codec='rawvideo')
+                os.rename(output_vid_path, video)
+
         else:
-            print('Skipping file: ' + video)
+            logging.info('Skipping file: ' + video)
+        cap.release()
+

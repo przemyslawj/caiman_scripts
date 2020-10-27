@@ -16,9 +16,9 @@ from load_args import *
 trial_no = int(os.environ['TRIAL_NO'])
 
 
-vid_index = 1
+vid_index = 0
 reevaluate = False
-filtered = True
+filtered = False
 
 
 """ Prepare data """
@@ -35,8 +35,8 @@ session_trace_offset = session_lengths[trial_no - 1]
 
 dims = cnm_obj.estimates.dims
 mmap_prefix = 'els'
-mmap_fname = 'msCam' + str(vid_index) + '_' + mmap_prefix + '__d1_' + str(dims[0]) + '_d2_' + str(dims[1]) + '_d3_1_order_F_frames_1000_.mmap'
-remote_mmap_dir = os.path.dirname(session_info['dat_files'][trial_no - 1])
+mmap_fname = vid_prefix + str(vid_index) + '_' + mmap_prefix + '__d1_' + str(dims[0]) + '_d2_' + str(dims[1]) + '_d3_1_order_F_frames_1000_.mmap'
+remote_mmap_dir = os.path.dirname(session_info['timestamp_files'][trial_no - 1])
 mmap_session_subdir = remote_mmap_dir.split(experiment_date + '/')[1]
 local_mmap_dir = os.path.join(local_dated_dir, mmap_session_subdir)
 local_mmap_fpath = os.path.join(local_mmap_dir, mmap_fname)
@@ -51,8 +51,10 @@ eval_params = {
     'use_cnn': False,
     'rval_thr': 0.8,
     'rval_lowest': -1.0,
-    'min_SNR': 8,
-    'SNR_lowest': 2.5,
+    #'min_SNR': 8,
+    #'SNR_lowest': 2.5,
+    'min_SNR': 4,
+    'SNR_lowest': 1,
 }
 max_thr = 0.45
 
@@ -62,7 +64,8 @@ vca1_neuron_sizes = {
 }
 dca1_neuron_sizes = {
     'max': 110,
-    'min': 20
+    #'min': 20
+    'min': 5
 }
 neuron_size_params = dca1_neuron_sizes
 
@@ -89,7 +92,7 @@ if reevaluate:
     cm.stop_server(dview=dview)
 else:
     eval_params['use_cnn'] = False
-    cnm_obj.estimates.filter_components(images, cnm_obj.params, new_dict=eval_params)
+    #cnm_obj.estimates.filter_components(images, cnm_obj.params, new_dict=eval_params)
 cnm_obj.estimates.idx_components_bad = sorted(np.union1d(cnm_obj.estimates.idx_components_bad, idx_components_bad))
 cnm_obj.estimates.idx_components = sorted(np.setdiff1d(np.arange(cnm_obj.estimates.A.shape[-1]), cnm_obj.estimates.idx_components_bad))
 
@@ -143,7 +146,7 @@ def save_movie(estimate, imgs, Y_res, frames, q_max=99.5, q_min=2, bpx=0, thr=0.
         res_frame = cv2.resize(Y_res[:,:,index], dsize=raw_frame.shape[::-1], interpolation=cv2.INTER_LINEAR)
 
         # Assume residuals should be normaly distributed and show only > 2 std
-        res_frame_thr = np.where(res_frame > 1 * np.std(res_frame), res_frame + min_denoised_val / 5, 0)
+        res_frame_thr = np.where(res_frame > 2 * np.std(res_frame), res_frame + min_denoised_val / 5, 0)
         res_frame_thr = np.clip((res_frame_thr - np.min(res_frame_thr)) * denoised_gain / 2, 0, 255)
         denoised_frame = np.reshape(denoised_frame, denoised_frame.shape + (-1,))
         denoised_frame = np.concatenate([denoised_frame,
@@ -172,10 +175,10 @@ def save_movie(estimate, imgs, Y_res, frames, q_max=99.5, q_min=2, bpx=0, thr=0.
 
 
 from cnmfe_model import model_residual
-Y_res = model_residual(images, cnm_obj, 2, frames)
+Y_res = model_residual(images, cnm_obj, 2, frames, discard_bad_components=True)
 
-avifilename = 'Session' + str(trial_no) + '_msCam' + str(vid_index) + '_result.avi'
+avifilename = 'Session' + str(trial_no) + '_' + vid_prefix + str(vid_index) + '_result.avi'
 save_movie(cnm_obj.estimates, images, Y_res, frames, q_max=75, magnification=2,
            bpx=0, thr=0.6, gain=0.4,
            movie_name=os.path.join(result_dir, avifilename),
-           discard_bad_components=False)
+           discard_bad_components=True)
