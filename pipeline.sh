@@ -80,7 +80,7 @@ for exp_date in ${dates[*]}; do
               ./gdrive_download.sh
             fi
 
-            python downsample2.py
+            python downsample.py
             status=$?
             if [ $status -ne 0 ]; then
                 exit $status

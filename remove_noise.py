@@ -8,9 +8,6 @@
 # Script adapted from D Aharoni: https://github.com/Aharoni-Lab/Miniscope-v4/blob/master/Miniscope-v4-Denoising-Notebook/V4_Miniscope_noise_removal.ipynb
 #
 
-from load_args import *
-import miniscope_file
-
 import os.path
 from os import path
 import cv2
@@ -104,7 +101,8 @@ def lowpass_filter_vals(vals, fs=20, cutoff=3.0, butterOrder=6):
     return filtfilt(b, a, vals)
 
 # Apply both the 2D FFT spatial filtering and the lowpass mean intensity filtering to the raw data.
-def denoise_vids(vid_fpaths, maskFFT, meanFrameFiltered, replace_vid=False):
+def denoise_vids(vid_fpaths, maskFFT, meanFrameFiltered, replace_vid=False,
+                 output_dir='denoised'):
     vid_format = "GREY"
     codec = cv2.VideoWriter_fourcc(*vid_format)
 
@@ -112,8 +110,12 @@ def denoise_vids(vid_fpaths, maskFFT, meanFrameFiltered, replace_vid=False):
     for vid_fpath in vid_fpaths:
         fileNum += 1
         data_dir = os.path.dirname(vid_fpath)
-        denoised_dir = os.path.join(data_dir, 'denoised')
-        miniscope_file.mkdir(denoised_dir)
+        if os.path.isabs(output_dir):
+            denoised_dir = output_dir
+        else:
+            denoised_dir = os.path.join(data_dir, output_dir)
+        if not os.path.isdir(denoised_dir):
+            os.mkdir(denoised_dir)
         cap = cv2.VideoCapture(vid_fpath)
         if not cap.isOpened():
             raise IOError('Failed to open video file ' + vid_fpath)
@@ -122,7 +124,7 @@ def denoise_vids(vid_fpaths, maskFFT, meanFrameFiltered, replace_vid=False):
 
         for frameNum in tqdm(range(0, framesPerFile, 1),
                             total = framesPerFile,
-                            desc ="Running file {:.0f}.avi".format(fileNum - 1)):
+                            desc ="Removing noise in file {:.0f}.avi".format(fileNum - 1)):
             cap.set(cv2.CAP_PROP_POS_FRAMES, frameNum)
             ret, frame = cap.read()
 
@@ -157,6 +159,8 @@ def denoise_vids(vid_fpaths, maskFFT, meanFrameFiltered, replace_vid=False):
 
 
 if __name__ == '__main__':
+    import miniscope_file
+    from load_args import *
     session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
     for session_fpath in session_fpaths:
         logging.info('Removing noise in session dir %s', session_fpath)
