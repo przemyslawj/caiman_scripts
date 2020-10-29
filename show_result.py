@@ -16,7 +16,7 @@ from load_args import *
 trial_no = int(os.environ['TRIAL_NO'])
 
 vid_start_index = 0
-vid_index = 0
+vid_index = 1
 reevaluate = False
 filtered = False
 
@@ -67,11 +67,11 @@ dca1_neuron_sizes = {
     #'min': 20
     'min': 5
 }
-neuron_size_params = dca1_neuron_sizes
+neuron_size_params = vca1_neuron_sizes
 
 opts = params.CNMFParams(params_dict=eval_params)
 A = cnm_obj.estimates.A
-frames = session_trace_offset + range((vid_index - vid_start_index) * 1000, (vid_index - vid_index - vid_start_index + 1) * 1000)
+frames = session_trace_offset + range((vid_index - vid_start_index) * 1000, (vid_index - vid_start_index + 1) * 1000)
 images = video.load_images(local_mmap_fpath)
 if not filtered:
     cnm_obj.estimates.threshold_spatial_components(maxthr=max_thr)

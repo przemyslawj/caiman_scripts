@@ -46,43 +46,23 @@ if os.path.isfile(local_params_fpath):
     animal_params = params_csv[params_csv['animal'] == animal_name]
 else:
     animal_params = []
-if len(animal_params) > 0:
-    logging.info('Using CNMFE params file')
-    gSig = (animal_params['gSig'].values[0], animal_params['gSig'].values[0])
-    gSiz = (animal_params['gSiz'].values[0], animal_params['gSiz'].values[0])
-    min_corr = animal_params['min_corr'].values[0]
-    min_pnr = animal_params['min_pnr'].values[0]
-    ring_size_factor = 2.0
-else:
-    logging.info('Using default CNMFE params')
-    # ## Setup CNMFE params
-    # gSig = (3, 3)       # gaussian width of a 2D gaussian kernel, which approximates a neuron
-    gSig = (4, 4)
-    # gSiz = (13, 13)     # average diameter of a neuron, in general 4*gSig+1
-    gSiz = (17, 17)  # average diameter of a neuron, in general 4*gSig+1
-    min_corr = .8  # min peak value from correlation image
-    #min_corr = .7
-    min_pnr = 8  # min peak to noise ration from PNR image
-    ring_size_factor = 1.6  # radius of ring is gSiz*ring_size_factor
 
+# Default CNMFE params for 1-p
+decay_time = 0.4  # length of a typical transient in seconds
+gSig = (4, 4)
+gSiz = (17, 17)  # average diameter of a neuron, in general 4*gSig+1
+min_corr = .8  # min peak value from correlation image
+min_pnr = 8  # min peak to noise ration from PNR image
+ring_size_factor = 1.6  # radius of ring is gSiz*ring_size_factor
 
 frate = 20
 pw_rigid = False  # flag for pw-rigid motion correction
 border_nan = 'copy'
 Ain = None  # possibility to seed with predetermined binary masks
 gnb = 0  # number of background components (rank) if positive, else exact ring model with following settings
-# gnb= 0: Return background as b and W
-# gnb=-1: Return full rank background B
-# gnb<-1: Don't return background
-decay_time = 0.4  # length of a typical transient in seconds
-
-# Compute some summary images (correlation and peak to noise) while downsampling temporally 5x to speedup the process and avoid memory overflow
-# change swap dim if output looks weird, it is a problem with tiffile
-cn_filter, pnr = cm.summary_images.correlation_pnr(images[::20], gSig=gSig[0], swap_dim=False)
-if hasattr(sys, 'ps1'): # interactive mode
-    inspect_correlation_pnr(cn_filter, pnr)
-    plt.show(block=True)
-
+         # gnb= 0: Return background as b and W
+         # gnb=-1: Return full rank background B
+         # gnb<-1: Don't return background
 p = 1               # order of the autoregressive system
 K = None            # upper bound on number of components per patch, in general None for 1p data
 merge_thr = .7      # merging threshold, max correlation allowed
@@ -105,32 +85,55 @@ nb_patch = 0        # number of background components (rank) per patch if gnb>0,
 #                     else it is set automatically
 ssub_B = 2          # additional downsampling factor in space for background
 
+if len(animal_params) > 0:
+    logging.info('Using CNMFE params file')
+    gSig = (animal_params['gSig'].values[0], animal_params['gSig'].values[0])
+    gSiz = (animal_params['gSiz'].values[0], animal_params['gSiz'].values[0])
+    min_corr = animal_params['min_corr'].values[0]
+    min_pnr = animal_params['min_pnr'].values[0]
+    ring_size_factor = animal_params['ring_factor'].values[0]
+    if 'decay_time' in animal_params:
+        decay_time = animal_params['decay_time'].values[0]
+else:
+    logging.info('Using default CNMFE params')
 
-opts = params.CNMFParams(params_dict={'dims': dims,
-                                'method_init': 'corr_pnr',  # use this for 1 photon
-                                'K': K,
-                                'gSig': gSig,
-                                'gSiz': gSiz,
-                                'merge_thr': merge_thr,
-                                'p': p,
-                                'tsub': tsub,
-                                'ssub': ssub,
-                                'rf': rf,
-                                'stride': stride_cnmf,
-                                'only_init': True,    # set it to True to run CNMF-E
-                                'nb': gnb,
-                                'nb_patch': nb_patch,
-                                'method_deconvolution': 'oasis',       # could use 'cvxpy' alternatively
-                                'low_rank_background': low_rank_background,
-                                'update_background_components': True,  # sometimes setting to False improve the results
-                                'min_corr': min_corr,
-                                'min_pnr': min_pnr,
-                                'normalize_init': False,               # just leave as is
-                                'center_psf': True,                    # leave as is for 1 photon
-                                'ssub_B': ssub_B,
-                                'ring_size_factor': ring_size_factor,
-                                'del_duplicates': True,                # whether to remove duplicates from initialization
-                                'border_pix': 2})                # number of pixels to not consider in the borders)
+opts = params.CNMFParams(params_dict={
+    'fr': frate,
+    'dims': dims,
+    'decay_time': decay_time,
+    'method_init': 'corr_pnr',  # use this for 1 photon
+    'K': K,
+    'gSig': gSig,
+    'gSiz': gSiz,
+    'merge_thr': merge_thr,
+    'p': p,
+    'tsub': tsub,
+    'ssub': ssub,
+    'rf': rf,
+    'stride': stride_cnmf,
+    'only_init': True,  # set it to True to run CNMF-E
+    'nb': gnb,
+    'nb_patch': nb_patch,
+    'method_deconvolution': 'oasis',  # could use 'cvxpy' alternatively
+    'low_rank_background': low_rank_background,
+    'update_background_components': True,  # sometimes setting to False improve the results
+    'min_corr': min_corr,
+    'min_pnr': min_pnr,
+    'normalize_init': False,  # just leave as is
+    'center_psf': True,  # leave as is for 1 photon
+    'ssub_B': ssub_B,
+    'ring_size_factor': ring_size_factor,
+    'del_duplicates': True,  # whether to remove duplicates from initialization
+    'border_pix': 0  # number of pixels to not consider in the borders)
+})
+
+logging.info('CNMFE params:\n%s', str(opts))
+
+# Compute correlation and peak to noise summary images
+cn_filter, pnr = cm.summary_images.correlation_pnr(images[::20], gSig=gSig[0], swap_dim=False)
+if hasattr(sys, 'ps1'): # interactive mode
+    inspect_correlation_pnr(cn_filter, pnr)
+    plt.show(block=True)
 
 logging.info('Starting CNMF')
 analysis_start = time.time()

@@ -17,7 +17,6 @@ import subprocess
 
 import caiman as cm
 from caiman.motion_correction import MotionCorrect
-from caiman.source_extraction.cnmf import params as params
 from caiman.motion_correction import motion_correct_oneP_rigid, motion_correct_oneP_nonrigid
 
 
@@ -32,7 +31,7 @@ subprocess.call(['mkdir', '-p', result_data_dir])
 
 now = datetime.now()
 analysis_time = now.strftime("%Y-%m-%d %H:%M") # This is to register when the analysis was performed
-print('Analysis started on ' + analysis_time)
+logging.info('Analysis started on %s', analysis_time)
 
 analysis_start = time.time()
 
@@ -147,37 +146,34 @@ def plot_stats(session_fpath, mc, shifts_rig):
 
 def mc_vids(vids_fpath, mc_rigid_template):
     start = time.time()
-    mc = motion_correct_oneP_rigid(vids_fpath,
-                                   gSig_filt=gSig_filt,
-                                   max_shifts=max_shifts,
-                                   dview=dview,
-                                   splits_rig=splits_rig,
-                                   save_movie=True,
-                                   border_nan='copy')
+    # estimated minimum value of the movie to produce an output that is positive
+    min_mov = np.array([cm.motion_correction.high_pass_filter_space(
+        m_, gSig_filt) for m_ in cm.load(vids_fpath[0], subindices=range(400))]).min()
+    mc = MotionCorrect(
+        vids_fpath,
+        min_mov,
+        dview=dview,
+        max_shifts=max_shifts,
+        niter_rig=1,
+        splits_rig=splits_rig,
+        num_splits_to_process_rig=None,
+        shifts_opencv=True,
+        nonneg_movie=True,
+        gSig_filt=gSig_filt,
+        border_nan=border_nan,
+        is3D=False)
+
+    mc.motion_correct_rigid(save_movie=(not doPwRigid), template=mc_rigid_template)
+
     shifts_rig = mc.shifts_rig
     template_rig = mc.total_template_rig
 
     if doPwRigid:
-        mc.pw_rigid = True
-        mc = motion_correct_oneP_nonrigid(
-            vids_fpath,
-            gSig_filt=gSig_filt,
-            max_shifts=max_shifts,
-            strides=strides,
-            overlaps=overlaps,
-            splits_els=splits_els,
-            upsample_factor_grid=upsample_factor_grid,
-            max_deviation_rigid=max_deviation_rigid,
-            dview=dview,
-            splits_rig=None,
-            save_movie=True,
-            new_templ=mc.total_template_rig,  # template to initialize motion correction
-            border_nan='copy'
-        )
+        mc.motion_correct_pwrigid(save_movie=True, template=template_rig)
         mc.total_template_rig = template_rig
 
     duration = time.time() - start
-    print('Motion correction done in ' + str(duration))
+    logging.info('Motion correction done in %s', str(duration))
     return mc, duration, shifts_rig
 
 
@@ -187,10 +183,13 @@ rigid_template_fpath = result_data_dir + '/mc_rigid_template'
 if os.path.isfile(rigid_template_fpath + '.npy') and not rerun:
     mc_rigid_template = np.load(rigid_template_fpath + '.npy')
 
+logging.info('Sessions to motion correct %d', len(session_fpaths))
 for s_fpath in session_fpaths:
     session_vids = miniscope_file.list_vidfiles(s_fpath, vid_prefix)
     if shortRun:
         session_vids = [session_vids[0]]
+    logging.info('Correcting %d vids in session %s',
+            len(session_vids), s_fpath)
     mc_stats_fpath = miniscope_file.get_miniscope_vids_path(s_fpath) + '/mc_stats.yaml'
 
     # If directory already processed
@@ -201,10 +200,10 @@ for s_fpath in session_fpaths:
             and (not rerun):
         continue
 
-    print('Aligning session vids:' + str(session_vids))
+    logging.debug('Aligning session vids: %s', str(session_vids))
     mc, duration, shifts_rig = mc_vids(session_vids, mc_rigid_template)
     fname_mc = mc.fname_tot_els if doPwRigid else mc.fname_tot_rig
-    print('Created motion corrected files: ' + str(fname_mc))
+    logging.debug('Created motion corrected files: %s', str(fname_mc))
 
     if mc_rigid_template is None:
         mc_rigid_template = mc.total_template_rig

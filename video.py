@@ -2,7 +2,6 @@ import caiman as cm
 
 import cv2
 import numpy as np
-import os
 import skvideo.io
 
 

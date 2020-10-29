@@ -27,6 +27,7 @@ def read_dat_timestamps(dat_file):
     this_mstime = sysClock[mstime_idx]
     return this_mstime, camNumber
 
+
 def read_timestamps(timestamp_file):
     if timestamp_file.endswith('.dat'):
         return read_dat_timestamps(timestamp_file)
