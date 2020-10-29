@@ -3,6 +3,7 @@ from caiman.source_extraction.cnmf.initialization import downscale
 from scipy.sparse import csr_matrix
 
 
+# Returns residual fluorescence and background fluorescence
 def model_residual(images, cnm, ssub_B, frames=[], discard_bad_components=True):
     dims = images.shape[1:]
     if len(frames) == 0:
@@ -29,4 +30,4 @@ def model_residual(images, cnm, ssub_B, frames=[], discard_bad_components=True):
     B = b0_ds_rep + W.dot((images_ds - AC_ds - b0_ds_rep).reshape((W.shape[0], T), order='F')).reshape(ds_dims, order='F')
     Y_res = images_ds - AC_ds - B
 
-    return Y_res
+    return Y_res, B
