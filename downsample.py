@@ -8,34 +8,34 @@ import pandas as pd
 logging.basicConfig(level=logging.INFO)
 
 
-def crop_and_downsample(video, crop_roi_xy, spatial_downsampling,
-        output_vid_dir='down', replace_video=True):
+def crop_and_downsample(vid_path, crop_roi_xy, spatial_downsampling,
+                        output_vid_dir='down', replace_video=True):
     x1,x2,y1,y2 = crop_roi_xy
     width = x2 - x1
     height = y2 - y1
     down_cols = int(width / spatial_downsampling)
     down_rows = int(height / spatial_downsampling)
 
-    cap = cv2.VideoCapture(video)
+    cap = cv2.VideoCapture(vid_path)
     if not cap.isOpened():
-        raise IOError('Failed to open input video file ' + video)
+        raise IOError('Failed to open input video file ' + vid_path)
     ret, frame = cap.read()
     if not ret:
-        raise IOError('Failed to read first frame of input video file ' + video)
+        raise IOError('Failed to read first frame of input video file ' + vid_path)
     rows, cols = frame.shape[:2]
     logging.debug('Input video shape: (%d, %d)', rows, cols)
 
     if not os.path.isabs(output_vid_dir):
-        output_vid_dir = os.path.join(os.path.dirname(video), output_vid_dir)
+        output_vid_dir = os.path.join(os.path.dirname(vid_path), output_vid_dir)
     if not os.path.isdir(output_vid_dir):
         os.mkdir(output_vid_dir)
     output_vid_path = os.path.join(output_vid_dir,
-                                   os.path.basename(video))
+                                   os.path.basename(vid_path))
     if (cols, rows) == (down_cols, down_rows):
         cap.release()
         return None
 
-    logging.info('Downsampling and cropping file: ' + video)
+    logging.info('Downsampling and cropping file: ' + vid_path)
     fourcc = cv2.VideoWriter_fourcc(*'GREY')
     vid_writer = cv2.VideoWriter(output_vid_path,
                                     fourcc, 60, (down_cols, down_rows),
@@ -57,9 +57,9 @@ def crop_and_downsample(video, crop_roi_xy, spatial_downsampling,
     cap.release()
 
     if replace_video:
-        os.remove(video)
-        os.rename(output_vid_path, video)
-        output_vid_path = video
+        os.remove(vid_path)
+        os.rename(output_vid_path, vid_path)
+        output_vid_path = vid_path
     return output_vid_path
 
 

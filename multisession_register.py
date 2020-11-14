@@ -36,10 +36,9 @@ cnm_titles = []
 for exp_title in exp_title_dates.keys():
     exp_dates = exp_title_dates[exp_title]
     for exp_date in exp_dates:
-        gdrive_dated_dir = os.path.join(downsample_subpath, experiment_month, exp_title, exp_date)
-        local_dated_dir = os.path.join(local_rootdir, gdrive_dated_dir)
+        local_dated_dir = os.path.join(local_rootdir, downsample_subpath, experiment_month, exp_title, exp_date)
         result_dir = os.path.join(local_dated_dir, 'caiman', animal)
-        gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal)
+        gdrive_result_dir = os.path.join(upload_path, experiment_month, exp_title, exp_date, 'caiman', animal)
 
         analysis_results_fname = 'analysis_results.hdf5'
         if filteredComponents:

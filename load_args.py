@@ -13,6 +13,7 @@ experiment_date = optional_arg('EXP_DATE', 'missing_exp_date')
 animal_name = optional_arg('ANIMAL', 'missing')
 spatial_downsampling = int(optional_arg('DOWNSAMPLE', 2))
 downsample_subpath = os.environ['DOWNSAMPLE_SUBPATH']
+upload_path = os.environ['UPLOAD_PATH']
 local_rootdir = os.environ['LOCAL_ROOTDIR']
 
 ncores = int(optional_arg('NCORES', 4))

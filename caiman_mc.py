@@ -140,7 +140,7 @@ def plot_stats(session_fpath, mc, shifts_rig):
         plt.ylabel('pixels')
 
     name_parts = session_fpath.split(os.path.sep)
-    plt_fname = '_'.join([name_parts[-4], name_parts[-2], name_parts[-1], 'mc_summary.svg'])
+    plt_fname = '_'.join([name_parts[-4], name_parts[-3], name_parts[-2], name_parts[-1], 'mc_summary.svg'])
     plt.savefig(result_data_dir + '/' + plt_fname, edgecolor='w', format='svg', transparent=True)
 
 

@@ -9,6 +9,7 @@ download_files=1
 cnmfe_only=0
 rm_dir=1
 rm_noise=1
+adjust_gain=0
 
 
 while [[ $# -gt 0 ]]; do
@@ -32,6 +33,10 @@ while [[ $# -gt 0 ]]; do
         ;;
         --no_noise)
         rm_noise=0
+        shift # past argument
+        ;;
+        --adjust_gain)
+        adjust_gain=1
         shift # past argument
         ;;
         --animals)
@@ -93,6 +98,15 @@ for exp_date in ${dates[*]}; do
             if [ $status -ne 0 ]; then
                 exit $status
             fi
+
+            if [ $adjust_gain -eq 1 ]; then
+                time python filter_frames.py
+            fi
+            status=$?
+            if [ $status -ne 0 ]; then
+                exit $status
+            fi
+
 
             time python caiman_mc.py
             status=$?

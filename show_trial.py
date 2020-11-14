@@ -80,8 +80,8 @@ if not has_frame:
 #     loc_df = pd.read_csv(loc_filepath)
 
 # Prepare ca img video stream
-gdrive_dated_dir = os.path.join(downsample_subpath,  experiment_month, experiment_title, experiment_date)
-local_dated_dir = os.path.join(local_rootdir, gdrive_dated_dir)
+gdrive_dated_dir = os.path.join(upload_path,  experiment_month, experiment_title, experiment_date)
+local_dated_dir = os.path.join(local_rootdir, downsample_subpath, experiment_month, experiment_title, experiment_date)
 gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal_name)
 result_dir = os.path.join(local_dated_dir, 'caiman', animal_name)
 # Download result files if not stored locally
@@ -112,7 +112,7 @@ for vid_index in range(1, n_mscam_vids + 1):
     local_mmap_dir = os.path.join(local_dated_dir, mmap_session_subdir)
     local_mmap_fpath = os.path.join(local_mmap_dir, mmap_fname)
     if not os.path.isfile(local_mmap_fpath):
-        gdrive_mmap_dir = '/'.join([downsample_subpath,  experiment_month, experiment_title, experiment_date, mmap_session_subdir])
+        gdrive_mmap_dir = '/'.join([upload_path,  experiment_month, experiment_title, experiment_date, mmap_session_subdir])
         gdrive_mmap_fpath = os.path.join(gdrive_mmap_dir, mmap_fname)
         if gdrive_download_file(gdrive_mmap_fpath, local_mmap_dir, rclone_config):
             local_mmap_fpaths.append(local_mmap_fpath)

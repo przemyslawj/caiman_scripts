@@ -22,8 +22,8 @@ filtered = False
 
 
 """ Prepare data """
-gdrive_dated_dir = os.path.join(downsample_subpath, experiment_month, experiment_title, experiment_date)
-local_dated_dir = os.path.join(local_rootdir, gdrive_dated_dir)
+gdrive_dated_dir = os.path.join(upload_path, experiment_month, experiment_title, experiment_date)
+local_dated_dir = os.path.join(local_rootdir, downsample_subpath, experiment_month, experiment_title, experiment_date)
 gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal_name)
 result_dir = os.path.join(local_dated_dir, 'caiman', animal_name)
 # Download result files if not stored locally
@@ -41,7 +41,7 @@ mmap_session_subdir = remote_mmap_dir.split(experiment_date + '/')[1]
 local_mmap_dir = os.path.join(local_dated_dir, mmap_session_subdir)
 local_mmap_fpath = os.path.join(local_mmap_dir, mmap_fname)
 if not os.path.isfile(local_mmap_fpath):
-    gdrive_mmap_dir = '/'.join([downsample_subpath, experiment_month, experiment_title, experiment_date, mmap_session_subdir])
+    gdrive_mmap_dir = '/'.join([upload_path, experiment_month, experiment_title, experiment_date, mmap_session_subdir])
     gdrive_mmap_fpath = os.path.join(gdrive_mmap_dir, mmap_fname)
     gdrive_download_file(gdrive_mmap_fpath, local_mmap_dir, rclone_config)
 
@@ -186,4 +186,4 @@ avifilename = 'Session' + str(trial_no) + '_' + vid_prefix + str(vid_index) + '_
 save_movie(cnm_obj.estimates, images, Y_res, B, frames, q_max=75, magnification=2,
            bpx=0, thr=0.6, gain=0.4,
            movie_name=os.path.join(result_dir, avifilename),
-           discard_bad_components=False)
+           discard_bad_components=True)

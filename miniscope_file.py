@@ -89,7 +89,7 @@ def mkdir(dirpath):
 def gdrive_download_file(gdrive_fpath, local_dir, rclone_config):
     logging.info('Downloading file: ' + gdrive_fpath + ' to: ' + local_dir)
     mkdir(local_dir)
-    src_fpath = rclone_config + '' + gdrive_fpath
+    src_fpath = rclone_config + ':' + gdrive_fpath
     cp = subprocess.run(['rclone', 'copy', '-P', '--config', 'env/rclone.conf',
                         src_fpath,
                         local_dir], capture_output=True, text=True)
@@ -101,7 +101,7 @@ def gdrive_download_file(gdrive_fpath, local_dir, rclone_config):
 
 def gdrive_upload_file(local_fpath, gdrive_dir, rclone_config):
     logging.info('Uploading file: ' + local_fpath + ' to: ' + gdrive_dir)
-    target_dir = rclone_config  + ':' + gdrive_dir
+    target_dir = rclone_config + ':' + gdrive_dir
     cp = subprocess.run(['rclone', 'copy', '-P', '--config', 'env/rclone.conf',
                          local_fpath,
                          target_dir],
