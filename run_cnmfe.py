@@ -94,6 +94,8 @@ if len(animal_params) > 0:
     ring_size_factor = animal_params['ring_factor'].values[0]
     if 'decay_time' in animal_params:
         decay_time = animal_params['decay_time'].values[0]
+    if 'merge_thr' in animal_params:
+        merge_thr = animal_params['merge_thr'].values[0]
 else:
     logging.info('Using default CNMFE params')
 

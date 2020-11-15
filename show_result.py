@@ -60,7 +60,7 @@ max_thr = 0.45
 
 vca1_neuron_sizes = {
     'max': 200,
-    'min': 30
+    'min': 10
 }
 dca1_neuron_sizes = {
     'max': 110,
@@ -186,4 +186,4 @@ avifilename = 'Session' + str(trial_no) + '_' + vid_prefix + str(vid_index) + '_
 save_movie(cnm_obj.estimates, images, Y_res, B, frames, q_max=75, magnification=2,
            bpx=0, thr=0.6, gain=0.4,
            movie_name=os.path.join(result_dir, avifilename),
-           discard_bad_components=True)
+           discard_bad_components=False)

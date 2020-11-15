@@ -9,7 +9,7 @@ download_files=1
 cnmfe_only=0
 rm_dir=1
 rm_noise=1
-adjust_gain=0
+filter_frames=0
 
 
 while [[ $# -gt 0 ]]; do
@@ -35,8 +35,8 @@ while [[ $# -gt 0 ]]; do
         rm_noise=0
         shift # past argument
         ;;
-        --adjust_gain)
-        adjust_gain=1
+        --filter_frames)
+        filter_frames=1
         shift # past argument
         ;;
         --animals)
@@ -99,7 +99,7 @@ for exp_date in ${dates[*]}; do
                 exit $status
             fi
 
-            if [ $adjust_gain -eq 1 ]; then
+            if [ $filter_frames -eq 1 ]; then
                 time python filter_frames.py
             fi
             status=$?

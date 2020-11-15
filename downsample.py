@@ -8,7 +8,7 @@ import pandas as pd
 logging.basicConfig(level=logging.INFO)
 
 
-def crop_and_downsample(vid_path, crop_roi_xy, spatial_downsampling,
+def crop_and_downsample(vid_path, crop_roi_xy, rotation_angle, spatial_downsampling,
                         output_vid_dir='down', replace_video=True):
     x1,x2,y1,y2 = crop_roi_xy
     width = x2 - x1
@@ -38,10 +38,15 @@ def crop_and_downsample(vid_path, crop_roi_xy, spatial_downsampling,
     logging.info('Downsampling and cropping file: ' + vid_path)
     fourcc = cv2.VideoWriter_fourcc(*'GREY')
     vid_writer = cv2.VideoWriter(output_vid_path,
-                                    fourcc, 60, (down_cols, down_rows),
-                                    isColor=False)
+                                 fourcc, 60, (down_cols, down_rows),
+                                 isColor=False)
     logging.info('Cropped and resized output video shape: (%d, %d)', down_cols, down_rows)
+
+    rotation_matrix = cv2.getRotationMatrix2D((rows/2, cols/2), rotation_angle, 1)
     while ret:
+        if rotation_angle > 0:
+            frame = cv2.warpAffine(frame, rotation_matrix, (cols, rows))
+            logging.debug('Rotated video to shape: (%d, %d)', frame.shape[:2])
         cropped = frame[y1:y2, x1:x2, 1]
         logging.debug('Cropped shape: %s', str(cropped.shape))
         if spatial_downsampling > 1:
@@ -74,7 +79,10 @@ def get_roi_xy(local_rois_fpath, animal_name):
     x2 = animal_roi['x2'].values[0]
     y1 = animal_roi['y1'].values[0]
     y2 = animal_roi['y2'].values[0]
-    return x1, x2, y1, y2
+    rotation = 0
+    if 'rotation' in animal_roi.columns:
+        rotation = animal_roi['rotation'].values[0]
+    return (x1, x2, y1, y2), rotation
 
 if __name__ == '__main__':
     from load_args import *
@@ -86,14 +94,14 @@ if __name__ == '__main__':
         'rois.csv'])
     logging.info('local miniscope path: ' + local_miniscope_path)
 
-    x1, x2, y1, y2 = get_roi_xy(local_rois_fpath, animal_name)
+    crop_roi, rotation = get_roi_xy(local_rois_fpath, animal_name)
 
     session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
     for s_fpath in session_fpaths:
         vids_fpath = miniscope_file.list_vidfiles(s_fpath, vid_prefix)
         for video in vids_fpath:
             output_vid_path = crop_and_downsample(
-                    video, (x1,x2,y1,y2), spatial_downsampling)
+                    video, crop_roi, rotation, spatial_downsampling)
             if output_vid_path is None:
                 logging.info('Video file unchanged: ' + video)
 
