@@ -17,7 +17,6 @@ import subprocess
 
 import caiman as cm
 from caiman.motion_correction import MotionCorrect
-from caiman.motion_correction import motion_correct_oneP_rigid, motion_correct_oneP_nonrigid
 
 
 logging.basicConfig(level=logging.INFO)
@@ -27,10 +26,10 @@ rerun = False
 session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
 if shortRun:
     session_fpaths = [session_fpaths[0]]
-subprocess.call(['mkdir', '-p', result_data_dir])
+subprocess.call(['mkdir', '-p', caiman_result_dir])
 
 now = datetime.now()
-analysis_time = now.strftime("%Y-%m-%d %H:%M") # This is to register when the analysis was performed
+analysis_time = now.strftime("%Y-%m-%d %H:%M")
 logging.info('Analysis started on %s', analysis_time)
 
 analysis_start = time.time()
@@ -68,7 +67,6 @@ max_deviation_rigid = 3  # maximum deviation allowed for patch with respect to r
 local_params_fpath = '/'.join([
     local_rootdir,
     downsample_subpath,
-    experiment_month,
     'cnmfe_params.csv'])
 
 if os.path.isfile(local_params_fpath):
@@ -141,7 +139,7 @@ def plot_stats(session_fpath, mc, shifts_rig):
 
     name_parts = session_fpath.split(os.path.sep)
     plt_fname = '_'.join([name_parts[-4], name_parts[-3], name_parts[-2], name_parts[-1], 'mc_summary.svg'])
-    plt.savefig(result_data_dir + '/' + plt_fname, edgecolor='w', format='svg', transparent=True)
+    plt.savefig(caiman_result_dir + '/' + plt_fname, edgecolor='w', format='svg', transparent=True)
 
 
 def mc_vids(vids_fpath, mc_rigid_template):
@@ -179,7 +177,7 @@ def mc_vids(vids_fpath, mc_rigid_template):
 
 max_bord_px = 0
 mc_rigid_template = None
-rigid_template_fpath = result_data_dir + '/mc_rigid_template'
+rigid_template_fpath = caiman_result_dir + '/mc_rigid_template'
 if os.path.isfile(rigid_template_fpath + '.npy') and not rerun:
     mc_rigid_template = np.load(rigid_template_fpath + '.npy')
 

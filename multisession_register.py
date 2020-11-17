@@ -12,7 +12,6 @@ from load_args import *
 logging.basicConfig(level=logging.INFO)
 
 # Choose sessions
-experiment_month = '2019-07'
 exp_title_dates = {
     #'habituation': ['2019-08-27', '2019-08-28', '2019-08-29'],
     #'learning': ['2019-08-30', '2019-08-31', '2019-09-01']
@@ -36,14 +35,13 @@ cnm_titles = []
 for exp_title in exp_title_dates.keys():
     exp_dates = exp_title_dates[exp_title]
     for exp_date in exp_dates:
-        local_dated_dir = os.path.join(local_rootdir, downsample_subpath, experiment_month, exp_title, exp_date)
-        result_dir = os.path.join(local_dated_dir, 'caiman', animal)
-        gdrive_result_dir = os.path.join(upload_path, experiment_month, exp_title, exp_date, 'caiman', animal)
+        local_dated_dir = os.path.join(local_rootdir, downsample_subpath, exp_title, exp_date)
+        gdrive_result_dir = os.path.join(upload_path, exp_title, exp_date, 'caiman', animal)
 
         analysis_results_fname = 'analysis_results.hdf5'
         if filteredComponents:
             analysis_results_fname = os.path.join('filtered', 'analysis_results_filtered.hdf5')
-        h5fpath = os.path.join(result_dir, analysis_results_fname)
+        h5fpath = os.path.join(caiman_result_dir, analysis_results_fname)
         if not os.path.isfile(h5fpath):
             gdrive_download_file(os.path.join(gdrive_result_dir, analysis_results_fname),
                                  os.path.dirname(h5fpath), rclone_config)
@@ -52,9 +50,9 @@ for exp_title in exp_title_dates.keys():
         cnm_titles.append(exp_title + '_' + exp_date)
         spatial.append(cnm_obj.estimates.A.copy())
 
-        rigid_template_fpath = result_dir + '/mc_rigid_template.npy'
+        rigid_template_fpath = os.path.join(caiman_result_dir, 'mc_rigid_template.npy')
         if not os.path.isfile(rigid_template_fpath):
-            gdrive_download_file(gdrive_result_dir + '/mc_rigid_template.npy', result_dir, rclone_config)
+            gdrive_download_file(gdrive_result_dir + '/mc_rigid_template.npy', caiman_result_dir, rclone_config)
         rigid_template = np.load(rigid_template_fpath)
         #templates.append(rigid_template)
         # Create a template using spatial footprints of the cells

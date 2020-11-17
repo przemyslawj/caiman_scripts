@@ -16,7 +16,7 @@ import video
 logging.basicConfig(level=logging.INFO)
 
 trial = int(os.environ['TRIAL_NO'])
-selected_cell_ids_str = optional_arg('CELL_IDS', '')
+selected_cell_ids_str = get_config_param('CELL_IDS', '')
 
 selected_cell_ids = []
 if len(selected_cell_ids_str) > 0:
@@ -25,7 +25,7 @@ if len(selected_cell_ids_str) > 0:
 useFiltered = True
 
 exp_name = 'beforetest'
-dated_dir = os.path.join(local_rootdir, 'cheeseboard', experiment_month, experiment_title, experiment_date, exp_name)
+dated_dir = os.path.join(local_rootdir, 'cheeseboard', experiment_title, experiment_date, exp_name)
 
 
 def create_video_writer(video_outputfile, frame_rate, format='IYUV', video_dim=(640,480)):
@@ -65,7 +65,7 @@ video_filename = '_'.join(filter(lambda x: x is not None, [experiment_date_prefi
 movie_dir = os.path.join(dated_dir, 'movie')
 video_filepath = os.path.join(movie_dir, video_filename)
 if not os.path.isfile(video_filepath):
-    gdrive_vid_dir = '/'.join(['cheeseboard', experiment_month, experiment_title, experiment_date, exp_name, 'movie'])
+    gdrive_vid_dir = '/'.join(['cheeseboard', experiment_title, experiment_date, exp_name, 'movie'])
     gdrive_vid_fpath = os.path.join(gdrive_vid_dir, video_filename)
     gdrive_download_file(gdrive_vid_fpath, movie_dir, rclone_config)
 
@@ -80,19 +80,18 @@ if not has_frame:
 #     loc_df = pd.read_csv(loc_filepath)
 
 # Prepare ca img video stream
-gdrive_dated_dir = os.path.join(upload_path,  experiment_month, experiment_title, experiment_date)
-local_dated_dir = os.path.join(local_rootdir, downsample_subpath, experiment_month, experiment_title, experiment_date)
+gdrive_dated_dir = os.path.join(upload_path,  experiment_title, experiment_date)
 gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal_name)
-result_dir = os.path.join(local_dated_dir, 'caiman', animal_name)
+
 # Download result files if not stored locally
-cnm_obj = load_hdf5_result(result_dir, gdrive_result_dir, rclone_config, use_filtered=useFiltered)
+cnm_obj = load_hdf5_result(caiman_result_dir, gdrive_result_dir, rclone_config, use_filtered=useFiltered)
 
 if len(selected_cell_ids) > 0:
     selected_cells = np.where(np.isin(cnm_obj.estimates.registered_cell_ids, selected_cell_ids))[0]
 else:
     selected_cells = [x for x in range(10, 100, 5)]
 
-session_info = load_session_info(result_dir, gdrive_result_dir, rclone_config)
+session_info = load_session_info(caiman_result_dir, gdrive_result_dir, rclone_config)
 session_lengths = np.cumsum([0] + session_info['session_lengths'])
 session_trace_offset = session_lengths[trial - 1]
 
@@ -109,10 +108,10 @@ for vid_index in range(1, n_mscam_vids + 1):
                  str(frames) + '_.mmap'
     remote_mmap_dir = os.path.dirname(session_info['dat_files'][trial - 1])
     mmap_session_subdir = remote_mmap_dir.split(experiment_date + '/')[1]
-    local_mmap_dir = os.path.join(local_dated_dir, mmap_session_subdir)
+    local_mmap_dir = os.path.join(local_miniscope_path, mmap_session_subdir)
     local_mmap_fpath = os.path.join(local_mmap_dir, mmap_fname)
     if not os.path.isfile(local_mmap_fpath):
-        gdrive_mmap_dir = '/'.join([upload_path,  experiment_month, experiment_title, experiment_date, mmap_session_subdir])
+        gdrive_mmap_dir = '/'.join([upload_path,  experiment_title, experiment_date, mmap_session_subdir])
         gdrive_mmap_fpath = os.path.join(gdrive_mmap_dir, mmap_fname)
         if gdrive_download_file(gdrive_mmap_fpath, local_mmap_dir, rclone_config):
             local_mmap_fpaths.append(local_mmap_fpath)
@@ -121,7 +120,7 @@ for vid_index in range(1, n_mscam_vids + 1):
 
 local_timestamp_fpath = os.path.join(local_mmap_dir, 'timestamp.dat')
 if not os.path.isfile(local_timestamp_fpath):
-    gdrive_timestamp_dir = '/'.join(['cheeseboard',  experiment_month, experiment_title, experiment_date, mmap_session_subdir])
+    gdrive_timestamp_dir = '/'.join(['cheeseboard',  experiment_title, experiment_date, mmap_session_subdir])
     gdrive_timestamp_fpath = os.path.join(gdrive_timestamp_dir, 'timestamp.dat')
     gdrive_download_file(gdrive_timestamp_fpath, local_mmap_dir, rclone_config)
 import results_format
@@ -132,7 +131,7 @@ tracking_filename = '_'.join(filter(lambda x: x is not None, [experiment_date, a
 tracking_dir = os.path.join(movie_dir, 'tracking')
 tracking_filepath = os.path.join(tracking_dir, tracking_filename)
 if not os.path.isfile(tracking_filepath):
-    gdrive_tracking_dir = '/'.join(['cheeseboard', experiment_month, experiment_title, experiment_date, exp_name, 'movie', 'tracking'])
+    gdrive_tracking_dir = '/'.join(['cheeseboard', experiment_title, experiment_date, exp_name, 'movie', 'tracking'])
     gdrive_tracking_fpath = os.path.join(gdrive_tracking_dir, tracking_filename)
     gdrive_download_file(gdrive_tracking_fpath, tracking_dir, rclone_config)
 tracking_df = pd.read_csv(tracking_filepath)

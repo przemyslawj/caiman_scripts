@@ -60,7 +60,7 @@ def filter_components(cnm_obj, components_quality_params, registration_params, e
 # Load session objects
 session_objs = []
 for exp_title in exp_titles:
-    gdrive_exp_dir = os.path.join(downsample_subpath, experiment_month, exp_title)
+    gdrive_exp_dir = os.path.join(downsample_subpath, exp_title)
     cp = subprocess.run(['rclone', 'lsf', '--config', 'env/rclone.conf', rclone_config + ':' + gdrive_exp_dir],
                         capture_output=True, text=True)
     exp_dates = [x.strip() for x in cp.stdout.split('\n') if len(x.strip()) > 0]

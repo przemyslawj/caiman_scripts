@@ -22,14 +22,12 @@ filtered = False
 
 
 """ Prepare data """
-gdrive_dated_dir = os.path.join(upload_path, experiment_month, experiment_title, experiment_date)
-local_dated_dir = os.path.join(local_rootdir, downsample_subpath, experiment_month, experiment_title, experiment_date)
+gdrive_dated_dir = os.path.join(upload_path, experiment_title, experiment_date)
 gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal_name)
-result_dir = os.path.join(local_dated_dir, 'caiman', animal_name)
 # Download result files if not stored locally
-cnm_obj = load_hdf5_result(result_dir, gdrive_result_dir, rclone_config, use_filtered=filtered)
+cnm_obj = load_hdf5_result(caiman_result_dir, gdrive_result_dir, rclone_config, use_filtered=filtered)
 
-session_info = load_session_info(result_dir, gdrive_result_dir, rclone_config)
+session_info = load_session_info(caiman_result_dir, gdrive_result_dir, rclone_config)
 session_lengths = np.cumsum([0] + session_info['session_lengths'])
 session_trace_offset = session_lengths[trial_no - 1]
 
@@ -38,10 +36,10 @@ mmap_prefix = 'els'
 mmap_fname = vid_prefix + str(vid_index) + '_' + mmap_prefix + '__d1_' + str(dims[0]) + '_d2_' + str(dims[1]) + '_d3_1_order_F_frames_1000_.mmap'
 remote_mmap_dir = os.path.dirname(session_info['timestamp_files'][trial_no - 1])
 mmap_session_subdir = remote_mmap_dir.split(experiment_date + '/')[1]
-local_mmap_dir = os.path.join(local_dated_dir, mmap_session_subdir)
+local_mmap_dir = os.path.join(local_miniscope_path, mmap_session_subdir)
 local_mmap_fpath = os.path.join(local_mmap_dir, mmap_fname)
 if not os.path.isfile(local_mmap_fpath):
-    gdrive_mmap_dir = '/'.join([upload_path, experiment_month, experiment_title, experiment_date, mmap_session_subdir])
+    gdrive_mmap_dir = '/'.join([upload_path, experiment_title, experiment_date, mmap_session_subdir])
     gdrive_mmap_fpath = os.path.join(gdrive_mmap_dir, mmap_fname)
     gdrive_download_file(gdrive_mmap_fpath, local_mmap_dir, rclone_config)
 
@@ -87,7 +85,7 @@ if reevaluate:
     from caiman.cluster import setup_cluster
     c, dview, n_processes = setup_cluster(backend='local', n_processes=None, single_thread=True)
     import miniscope_file
-    all_images = video.load_images(miniscope_file.get_joined_memmap_fpath(result_dir))
+    all_images = video.load_images(miniscope_file.get_joined_memmap_fpath(caiman_result_dir))
     cnm_obj.estimates.evaluate_components(all_images, opts, dview)
     cm.stop_server(dview=dview)
 else:
@@ -185,5 +183,5 @@ Y_res, B = model_residual(images, cnm_obj, 2, frames, discard_bad_components=Tru
 avifilename = 'Session' + str(trial_no) + '_' + vid_prefix + str(vid_index) + '_result.avi'
 save_movie(cnm_obj.estimates, images, Y_res, B, frames, q_max=75, magnification=2,
            bpx=0, thr=0.6, gain=0.4,
-           movie_name=os.path.join(result_dir, avifilename),
+           movie_name=os.path.join(caiman_result_dir, avifilename),
            discard_bad_components=False)

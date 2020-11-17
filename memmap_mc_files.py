@@ -36,10 +36,10 @@ fname_new = cm.save_memmap(mc_fnames, base_name='memmap_', order='C',
 print('Motion corrected videos has been mapped to single file')
 cm.stop_server(dview=dview)
 
-subprocess.call(['mkdir', '-p', '/'.join([local_miniscope_path, 'caiman', animal_name])])
-output_file = '/'.join([local_miniscope_path, 'caiman', animal_name, os.path.basename(fname_new)])
+subprocess.call(['mkdir', '-p', caiman_result_dir])
+output_file = os.path.join(caiman_result_dir, os.path.basename(fname_new))
 subprocess.call(['mv', fname_new, output_file])
 
 if writeAvi:
     import video
-    video.write_avi(output_file, result_data_dir)
+    video.write_avi(output_file, caiman_result_dir)

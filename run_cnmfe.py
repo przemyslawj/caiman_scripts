@@ -27,7 +27,7 @@ c, dview, n_processes = cm.cluster.setup_cluster(
     backend='local', n_processes=min(3, ncores), single_thread=False, ignore_preexisting=True)
 
 # ## Load Motion Corrected data
-memmap_fpath = miniscope_file.get_joined_memmap_fpath(result_data_dir)
+memmap_fpath = miniscope_file.get_joined_memmap_fpath(caiman_result_dir)
 
 Yr, dims, T = cm.load_memmap(memmap_fpath)
 images = Yr.T.reshape((T,) + dims, order='F')
@@ -37,7 +37,6 @@ logging.info('Loaded memmap file')
 local_params_fpath = '/'.join([
     local_rootdir,
     downsample_subpath,
-    experiment_month,
     'cnmfe_params.csv'])
 
 if os.path.isfile(local_params_fpath):
@@ -225,7 +224,7 @@ else:
             plt.plot(trace, 'k')
 
 # Save summary figure
-plt.savefig(result_data_dir + '/' + 'summary_figure.svg', edgecolor='w', format='svg', transparent=True)
+plt.savefig(caiman_result_dir + '/' + 'summary_figure.svg', edgecolor='w', format='svg', transparent=True)
 
 """# Save the results in HDF5 format"""
 
@@ -235,7 +234,7 @@ cnm.estimates.r_values = np.where(np.isnan(cnm.estimates.r_values), -1, cnm.esti
 cnm.estimates.SNR_comp = np.where(np.isnan(cnm.estimates.SNR_comp), 0, cnm.estimates.SNR_comp)
 
 if save_hdf5:
-    cnm.save(result_data_dir + '/analysis_results.hdf5')
+    cnm.save(caiman_result_dir + '/analysis_results.hdf5')
 
 analysis_end = time.time()
 analysis_duration = analysis_end - analysis_start
@@ -243,7 +242,7 @@ print('Done analyzing. This took a total ' + str(analysis_duration) + ' s')
 
 # ## Save analysis
 # ## Register the timestamps
-with open(result_data_dir + '/session_info.yaml', 'r') as f:
+with open(caiman_result_dir + '/session_info.yaml', 'r') as f:
     session_info = yaml.load(f, Loader=yaml.FullLoader)
 
 """# Save the results in Matlab format"""
@@ -251,7 +250,7 @@ save_mat = True
 if save_mat:
     mstime, camNumber = results_format.concat_session_timestamps(session_info, local_rootdir,
                                                                  downsample_subpath, rclone_config)
-    results_format.save_matlab(cnm, session_info, result_data_dir, images[::100],
+    results_format.save_matlab(cnm, session_info, caiman_result_dir, images[::100],
                                mstime, camNumber)
 
 # Stop the cluster

@@ -1,0 +1,19 @@
+{
+  "sourceDirectory": "/media/prez/My\\ Passport/cheeseboard/2020-10",
+  "rcloneConfig": "local_drive",
+  "rcloneConfigFile": "env/rclone.conf",
+  "localTempDirectory": "/home/prez/neurodata/",
+  "downsample": 2,
+  "downsampleSubpath": "cheeseboard-down/down_2/2020-10",
+  "directoryStructure": [
+    "experimentGroup",
+    "date",
+    "experimentName",
+    "animalID",
+    "time"
+  ],
+  "experimentNames": ["trial", "homecage", "beforetest", "aftertest", "novel_box"],
+  "concatSessions": ["animalId", "date"],
+  "vidPrefix": "",
+  "ncores": 4
+}

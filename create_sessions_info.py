@@ -5,7 +5,6 @@ from load_args import *
 import caiman as cm
 
 info = dict()
-info['experiment_month'] = experiment_month
 info['experiment_title'] = experiment_title
 info['experiment_date'] = experiment_date
 info['animal_name'] = animal_name
@@ -31,5 +30,5 @@ for s_fpath in session_fpaths:
 info['session_lengths'] = session_lengths
 info['timestamp_files'] = timestamp_files
 
-with open(result_data_dir + '/session_info.yaml', 'w') as f:
+with open(caiman_result_dir + '/session_info.yaml', 'w') as f:
     yaml.dump(info, f)

@@ -1,5 +1,4 @@
 import logging
-import os
 import re
 import subprocess
 import yaml
@@ -9,7 +8,7 @@ from load_args import *
 
 def list_session_dirs(src_miniscope_path, animal_name):
     session_dirs = []
-    exp_subdirs = ['trial', 'homecage','beforetest', 'aftertest']
+    exp_subdirs = pipeline_setup['experimentNames']
     logging.info('Listing sessions in dir=%s for animal=%s', src_miniscope_path, animal_name)
     for exp_subdir in exp_subdirs:
         exp_path = os.path.join(src_miniscope_path, exp_subdir)
@@ -26,7 +25,7 @@ def list_session_dirs(src_miniscope_path, animal_name):
             sessions_fpaths = [sessions_rootdir + '/' + s for s in sessions_list]
             session_dirs = session_dirs + sessions_fpaths
 
-    return(session_dirs)
+    return session_dirs
 
 
 def _get_timestamped_path(session_fpath):
@@ -42,6 +41,7 @@ def sort_mscam(vid_prefix: str):
             raise Exception('Expected avi files, but got: ' + x)
         return int(re.findall("\d+", filename)[0])
     return sort_fun
+
 
 def get_miniscope_vids_path(session_fpath: str):
     timestamped_path = _get_timestamped_path(session_fpath)
@@ -86,8 +86,9 @@ def get_joined_memmap_fpath(result_data_dir):
 def mkdir(dirpath):
     subprocess.run(['mkdir', '-p', dirpath])
 
+
 def gdrive_download_file(gdrive_fpath, local_dir, rclone_config):
-    logging.info('Downloading file: ' + gdrive_fpath + ' to: ' + local_dir)
+    logging.info('Downloading path: ' + gdrive_fpath + ' to: ' + local_dir)
     mkdir(local_dir)
     src_fpath = rclone_config + ':' + gdrive_fpath
     cp = subprocess.run(['rclone', 'copy', '-P', '--config', 'env/rclone.conf',
@@ -100,7 +101,7 @@ def gdrive_download_file(gdrive_fpath, local_dir, rclone_config):
 
 
 def gdrive_upload_file(local_fpath, gdrive_dir, rclone_config):
-    logging.info('Uploading file: ' + local_fpath + ' to: ' + gdrive_dir)
+    logging.info('Uploading path: ' + local_fpath + ' to: ' + gdrive_dir)
     target_dir = rclone_config + ':' + gdrive_dir
     cp = subprocess.run(['rclone', 'copy', '-P', '--config', 'env/rclone.conf',
                          local_fpath,

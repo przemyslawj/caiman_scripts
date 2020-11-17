@@ -90,7 +90,6 @@ if __name__ == '__main__':
     local_rois_fpath = '/'.join([
         local_rootdir,
         downsample_subpath,
-        experiment_month,
         'rois.csv'])
     logging.info('local miniscope path: ' + local_miniscope_path)
 
