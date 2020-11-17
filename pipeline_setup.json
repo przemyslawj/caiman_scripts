@@ -1,5 +1,5 @@
 {
-  "sourceDirectory": "/media/prez/My\\ Passport/cheeseboard/2020-10",
+  "sourceDirectory": "/media/prez/My Passport/cheeseboard/2020-10",
   "rcloneConfig": "local_drive",
   "rcloneConfigFile": "env/rclone.conf",
   "localTempDirectory": "/home/prez/neurodata/",
@@ -10,10 +10,15 @@
     "date",
     "experimentName",
     "animalID",
+    "session",
     "time"
   ],
   "experimentNames": ["trial", "homecage", "beforetest", "aftertest", "novel_box"],
   "concatSessions": ["animalId", "date"],
+  "filterSessions": {
+    "animalId": ["O-TR", "R-TR"],
+    "date": ["2020_10_20"]
+  },
   "vidPrefix": "",
   "ncores": 4
 }

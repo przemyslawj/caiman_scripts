@@ -12,7 +12,7 @@ info['spatial_downsampling'] = spatial_downsampling
 info['downsample_subpath'] = downsample_subpath
 info['local_rootdir'] = local_rootdir
 
-session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, info['animal_name'])
+session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, experiment_date, animal_name)
 info['session_fpaths'] = session_fpaths
 
 timestamp_files = []

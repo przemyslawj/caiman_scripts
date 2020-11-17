@@ -12,7 +12,7 @@ from caiman.cluster import setup_cluster
 
 writeAvi = False
 border_nan = 'copy'
-session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
+session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, experiment_date, animal_name)
 
 mc_fnames = []
 max_bord_px = 0

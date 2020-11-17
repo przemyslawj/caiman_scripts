@@ -67,7 +67,7 @@ for exp_title in exp_titles:
     for exp_date in exp_dates:
         gdrive_dated_dir = os.path.join(gdrive_exp_dir, exp_date)
         gdrive_result_dir = os.path.join(gdrive_dated_dir, 'caiman', animal_name)
-        local_dated_dir = os.path.join(local_rootdir, gdrive_dated_dir)
+        local_dated_dir = os.path.join(local_rootdir, downsample_subpath, exp_title, exp_date)
         result_dir = os.path.join(local_dated_dir, 'caiman', animal_name)
 
         cnm_obj = load_hdf5_result(result_dir, gdrive_result_dir, rclone_config)

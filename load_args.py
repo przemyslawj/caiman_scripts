@@ -18,26 +18,22 @@ def get_config_param(arg, default_val=None):
 
 
 vid_prefix = get_config_param('vidPrefix', 'msCam')
+spatial_downsampling = get_config_param('downsample')
+ncores = get_config_param('ncores', 2)
+rclone_config = get_config_param('rcloneConfig')
+
+## Paths
+src_path = get_config_param('sourceDirectory')
+local_rootdir = get_config_param('localTempDirectory')
+downsample_subpath = get_config_param('downsampleSubpath')
+upload_path = os.path.join(local_rootdir, downsample_subpath)
+local_miniscope_path = os.path.join(local_rootdir, downsample_subpath)
 
 ## Run related needs to be in the environ
 experiment_title = get_config_param('EXP_TITLE', 'missing_exp_title')
 experiment_date = get_config_param('EXP_DATE', 'missing_exp_date')
 animal_name = get_config_param('ANIMAL', 'missing')
-
-spatial_downsampling = get_config_param('downsample')
-local_rootdir = get_config_param('localTempDirectory')
-downsample_subpath = get_config_param('downsampleSubpath')
-upload_path = os.path.join(local_rootdir, downsample_subpath)
-
-ncores = get_config_param('ncores', 2)
-rclone_config = get_config_param('RCLONE_CONFIG', 'missing_rclone_config')
-
-local_miniscope_path = '/'.join([
-    local_rootdir,
-    downsample_subpath,
-    experiment_title,
-    experiment_date])
-caiman_result_dir = os.path.join(local_miniscope_path, 'caiman', animal_name)
+caiman_result_dir = os.path.join(local_miniscope_path, experiment_title, experiment_date, 'caiman', animal_name)
 
 
 doPwRigid = True

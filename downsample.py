@@ -1,7 +1,6 @@
 import logging
 import cv2
 import numpy as np
-import os
 import pandas as pd
 
 
@@ -87,15 +86,12 @@ def get_roi_xy(local_rois_fpath, animal_name):
 if __name__ == '__main__':
     from load_args import *
     import miniscope_file
-    local_rois_fpath = '/'.join([
-        local_rootdir,
-        downsample_subpath,
-        'rois.csv'])
+    local_rois_fpath = os.path.join(local_miniscope_path, 'rois.csv')
     logging.info('local miniscope path: ' + local_miniscope_path)
 
     crop_roi, rotation = get_roi_xy(local_rois_fpath, animal_name)
 
-    session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
+    session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, experiment_date, animal_name)
     for s_fpath in session_fpaths:
         vids_fpath = miniscope_file.list_vidfiles(s_fpath, vid_prefix)
         for video in vids_fpath:

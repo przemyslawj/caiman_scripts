@@ -108,7 +108,7 @@ for vid_index in range(1, n_mscam_vids + 1):
                  str(frames) + '_.mmap'
     remote_mmap_dir = os.path.dirname(session_info['dat_files'][trial - 1])
     mmap_session_subdir = remote_mmap_dir.split(experiment_date + '/')[1]
-    local_mmap_dir = os.path.join(local_miniscope_path, mmap_session_subdir)
+    local_mmap_dir = os.path.join(local_miniscope_path, experiment_title, experiment_date, mmap_session_subdir)
     local_mmap_fpath = os.path.join(local_mmap_dir, mmap_fname)
     if not os.path.isfile(local_mmap_fpath):
         gdrive_mmap_dir = '/'.join([upload_path,  experiment_title, experiment_date, mmap_session_subdir])

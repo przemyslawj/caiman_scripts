@@ -156,7 +156,7 @@ def denoise_vids(vid_fpaths, maskFFT, meanFrameFiltered, replace_vid=False,
 if __name__ == '__main__':
     import miniscope_file
     from load_args import *
-    session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
+    session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, experiment_date, animal_name)
     for session_fpath in session_fpaths:
         logging.info('Removing noise in session dir %s', session_fpath)
 

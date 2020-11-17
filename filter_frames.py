@@ -46,7 +46,7 @@ def find_change_points(session_vals, penalty=1000):
 
 def get_fragment_means(meanFrame, signal_breaks):
     fragments = list(zip([0] + signal_breaks[:(len(signal_breaks) - 1)], signal_breaks))
-    fragmentMeans = [meanFrame[s:t].mean() for s, t in fragments]
+    fragmentMeans = [meanFrame[s:t].mean() if t > s else 0 for s, t in fragments]
     return fragments, fragmentMeans
 
 
@@ -128,7 +128,7 @@ if __name__ == '__main__':
     import miniscope_file
     import remove_noise
     from load_args import *
-    session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
+    session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, experiment_date, animal_name)
     session_mean_frame = []
     for session_fpath in session_fpaths:
         logging.info('Calculating mean frame values in session dir %s', session_fpath)
@@ -142,11 +142,16 @@ if __name__ == '__main__':
     mean_fragment_frame = [0] * len(change_points)
     for session_i in range(len(change_points)):
         fragments, fragmentMeans = get_fragment_means(session_mean_frame[session_i], change_points[session_i])
-        validFragments = [i for i, (x, y) in enumerate(fragments) if fragmentMeans[i] >= min_fluorescence_thr]
+        validFragments = [i for i, (x, y) in enumerate(fragments) if
+                          (fragmentMeans[i] >= min_fluorescence_thr) and (fragments[i][1] - fragments[i][0] > 0)]
         mean_vals = [fragmentMeans[i] for i in validFragments]
         fragment_lens = [fragments[i][1] - fragments[i][0] for i in validFragments]
-        mean_fragment_frame[session_i] = np.average(mean_vals, weights=fragment_lens)
-    mean_frame = np.mean(mean_fragment_frame)
+        if sum(fragment_lens) > 0:
+            mean_fragment_frame[session_i] = np.average(mean_vals, weights=fragment_lens)
+        else:
+            mean_fragment_frame[session_i] = np.nan
+            logging.warn('Session has no frames after filtering: %s', session_fpath[session_i])
+    mean_frame = np.nanmean(mean_fragment_frame)
     logging.info('Session max mean frame = %f.2', mean_frame)
 
     for session_i, session_fpath in enumerate(session_fpaths):

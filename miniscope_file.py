@@ -6,32 +6,40 @@ import yaml
 from load_args import *
 
 
-def list_session_dirs(src_miniscope_path, animal_name):
-    session_dirs = []
-    exp_subdirs = pipeline_setup['experimentNames']
-    logging.info('Listing sessions in dir=%s for animal=%s', src_miniscope_path, animal_name)
-    for exp_subdir in exp_subdirs:
-        exp_path = os.path.join(src_miniscope_path, exp_subdir)
-        if not os.path.isdir(exp_path):
-            continue
-        if miniscope_v4:
-            sessions_rootdir = os.path.join(exp_path, animal_name)
-        else:
-            sessions_rootdir = os.path.join(exp_path, 'mv_caimg', animal_name)
-        if os.path.isdir(sessions_rootdir):
-            # create a list of vids to process
-            sessions_list = [s for s in os.listdir(sessions_rootdir) if s.startswith('Session')]
-            sessions_list = sorted(sessions_list, key=lambda x: int(re.sub('[Session]', '', x)))
-            sessions_fpaths = [sessions_rootdir + '/' + s for s in sessions_list]
-            session_dirs = session_dirs + sessions_fpaths
-
-    return session_dirs
+def _recursively_visit_dirs(parent_dir, depth):
+    if not os.path.isdir(parent_dir):
+        return []
+    if depth == 0:
+        return [parent_dir]
+    res = []
+    for subdir in os.listdir(parent_dir):
+        res += _recursively_visit_dirs(os.path.join(parent_dir, subdir), depth-1)
+    return res
 
 
-def _get_timestamped_path(session_fpath):
-    timestamped_dir = [f for f in os.listdir(session_fpath) if f[0] == 'H' or f[0].isdigit()][0]
-    timestamped_path = '/'.join([session_fpath, timestamped_dir])
-    return(timestamped_path)
+def list_all_session_dirs(local_rootdir):
+    depth = len(pipeline_setup['directoryStructure'])
+    return _recursively_visit_dirs(local_rootdir, depth)
+
+
+def _path_parts(path):
+    p, f = os.path.split(path)
+    return _path_parts(p) + [f] if f else [p]
+
+
+def get_session_dirs_df(local_rootdir):
+    import pandas as pd
+    nsub_dirs = len(pipeline_setup['directoryStructure'])
+    df = pd.DataFrame({'path': list_all_session_dirs(local_rootdir)})
+    for i, var in enumerate(pipeline_setup['directoryStructure']):
+        df[var] = [_path_parts(p)[-(nsub_dirs - i)] for p in df['path'] if len(_path_parts(p)) > nsub_dirs]
+    return df
+
+
+def list_session_dirs(local_rootdir, experiment_date, animal_name):
+    df = get_session_dirs_df(local_rootdir)
+    paths = df[df.date.eq(experiment_date) & df.animalID.eq(animal_name)].path
+    return list(paths.values)
 
 
 def sort_mscam(vid_prefix: str):
@@ -44,11 +52,9 @@ def sort_mscam(vid_prefix: str):
 
 
 def get_miniscope_vids_path(session_fpath: str):
-    timestamped_path = _get_timestamped_path(session_fpath)
-    miniscope_vids_path = timestamped_path
     if miniscope_v4:
-        miniscope_vids_path = os.path.join(timestamped_path, 'Miniscope')
-    return miniscope_vids_path
+        return os.path.join(session_fpath, 'Miniscope')
+    return session_fpath
 
 
 def list_vidfiles(session_fpath: str, vid_prefix: str):
@@ -82,6 +88,7 @@ def get_joined_memmap_fpath(result_data_dir):
     if len(fs) == 0:
         raise FileNotFoundError('No memmap file found at ' + result_data_dir)
     return fs[0]
+
 
 def mkdir(dirpath):
     subprocess.run(['mkdir', '-p', dirpath])

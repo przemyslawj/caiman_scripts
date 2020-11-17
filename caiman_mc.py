@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.INFO)
 shortRun = False
 rerun = False
 
-session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, animal_name)
+session_fpaths = miniscope_file.list_session_dirs(local_miniscope_path, experiment_date, animal_name)
 if shortRun:
     session_fpaths = [session_fpaths[0]]
 subprocess.call(['mkdir', '-p', caiman_result_dir])
@@ -64,10 +64,7 @@ max_deviation_rigid = 3  # maximum deviation allowed for patch with respect to r
 
 
 # ## Read CNMFE params
-local_params_fpath = '/'.join([
-    local_rootdir,
-    downsample_subpath,
-    'cnmfe_params.csv'])
+local_params_fpath = os.path.join(local_miniscope_path, 'cnmfe_params.csv')
 
 if os.path.isfile(local_params_fpath):
     params_csv = pd.read_csv(local_params_fpath)

@@ -72,8 +72,8 @@ for exp_date in ${dates[*]}; do
         export EXP_DATE=$exp_date
         export EXP_MONTH
         export EXP_TITLE
-        # load defaults
-        source vars_setup.sh
+        ## load defaults
+        #source vars_setup.sh
         echo "Running pipeline for animal=${ANIMAL} date=${EXP_DATE}"
 
         if [ $dry_run -eq 1 ]; then
@@ -82,7 +82,7 @@ for exp_date in ${dates[*]}; do
 
         if [ $cnmfe_only -eq 0 ]; then
             if [ $download_files -eq 1 ]; then
-              ./gdrive_download.sh
+              python gdrive_download.py
             fi
 
             python downsample.py
@@ -138,7 +138,7 @@ for exp_date in ${dates[*]}; do
             exit $status
         fi
 
-        ./gdrive_upload.sh
+        python gdrive_upload.py
 
 		if [ $rm_dir -eq 1 ]; then
           rm -rf ${LOCAL_ROOTDIR}/${DOWNSAMPLE_SUBPATH}/${EXP_MONTH}/${EXP_TITLE}/${EXP_DATE}

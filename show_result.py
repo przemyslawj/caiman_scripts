@@ -36,7 +36,7 @@ mmap_prefix = 'els'
 mmap_fname = vid_prefix + str(vid_index) + '_' + mmap_prefix + '__d1_' + str(dims[0]) + '_d2_' + str(dims[1]) + '_d3_1_order_F_frames_1000_.mmap'
 remote_mmap_dir = os.path.dirname(session_info['timestamp_files'][trial_no - 1])
 mmap_session_subdir = remote_mmap_dir.split(experiment_date + '/')[1]
-local_mmap_dir = os.path.join(local_miniscope_path, mmap_session_subdir)
+local_mmap_dir = os.path.join(local_miniscope_path, experiment_title, experiment_date, mmap_session_subdir)
 local_mmap_fpath = os.path.join(local_mmap_dir, mmap_fname)
 if not os.path.isfile(local_mmap_fpath):
     gdrive_mmap_dir = '/'.join([upload_path, experiment_title, experiment_date, mmap_session_subdir])
