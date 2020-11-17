@@ -150,7 +150,7 @@ if __name__ == '__main__':
             mean_fragment_frame[session_i] = np.average(mean_vals, weights=fragment_lens)
         else:
             mean_fragment_frame[session_i] = np.nan
-            logging.warn('Session has no frames after filtering: %s', session_fpath[session_i])
+            logging.warning('Session has no frames after filtering:' + session_fpaths[session_i])
     mean_frame = np.nanmean(mean_fragment_frame)
     logging.info('Session max mean frame = %f.2', mean_frame)
 

@@ -5,6 +5,7 @@
   "localTempDirectory": "/home/prez/neurodata/",
   "downsample": 2,
   "downsampleSubpath": "cheeseboard-down/down_2/2020-10",
+  "uploadDirectory": "/media/prez/My Passport/cheeseboard-down/down_2/2020-10",
   "directoryStructure": [
     "experimentGroup",
     "date",

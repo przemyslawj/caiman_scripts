@@ -5,12 +5,12 @@ import miniscope_file
 
 logging.basicConfig(level=logging.INFO)
 
-miniscope_file.gdrive_upload_file(local_miniscope_path, os.path.join(src_path, 'rois.csv'), rclone_config)
-miniscope_file.gdrive_upload_file(local_miniscope_path, os.path.join(src_path, 'cnmfe_params.csv'), rclone_config)
 for exp_name in pipeline_setup['experimentNames']:
-    miniscope_file.gdrive_upload_file(os.path.join(local_miniscope_path, experiment_title, experiment_date, exp_name, animal_name),
-                                      os.path.join(src_path, experiment_title, experiment_date, exp_name, animal_name),
-                                      rclone_config)
+    copied_dir = os.path.join(local_miniscope_path, experiment_title, experiment_date, exp_name, animal_name)
+    if os.path.isdir(copied_dir):
+        miniscope_file.gdrive_upload_file(copied_dir,
+                                          os.path.join(upload_path, experiment_title, experiment_date, exp_name, animal_name),
+                                          rclone_config)
 
 miniscope_file.gdrive_upload_file(caiman_result_dir,
                                   os.path.join(upload_path, experiment_title, experiment_date, 'caiman', animal_name),

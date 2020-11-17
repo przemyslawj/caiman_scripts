@@ -12,7 +12,7 @@ def _recursively_visit_dirs(parent_dir, depth):
     if depth == 0:
         return [parent_dir]
     res = []
-    for subdir in os.listdir(parent_dir):
+    for subdir in sorted(os.listdir(parent_dir)):
         res += _recursively_visit_dirs(os.path.join(parent_dir, subdir), depth-1)
     return res
 
@@ -94,30 +94,44 @@ def mkdir(dirpath):
     subprocess.run(['mkdir', '-p', dirpath])
 
 
+# Prints the process stdout until it is terminated
+def _print_process_stdout(cp):
+    while True:
+        output = cp.stdout.readline()
+        if output == '' and cp.poll() is not None:
+            break
+        if output:
+            print(output.strip())
+
+
 def gdrive_download_file(gdrive_fpath, local_dir, rclone_config):
     logging.info('Downloading path: ' + gdrive_fpath + ' to: ' + local_dir)
-    mkdir(local_dir)
     src_fpath = rclone_config + ':' + gdrive_fpath
-    cp = subprocess.run(['rclone', 'copy', '-P', '--config', 'env/rclone.conf',
-                        src_fpath,
-                        local_dir], capture_output=True, text=True)
-    if cp.returncode != 0:
-        logging.error('Failed to download: ' + gdrive_fpath + ' error: ' + str(cp.stderr))
-        return False
-    return True
+    cp = subprocess.Popen(['rclone', 'copy', '-P', '--config', 'env/rclone.conf', src_fpath, local_dir],
+                          stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE,
+                          encoding='utf8')
+    _print_process_stdout(cp)
+    if cp.returncode == 0:
+        return True
+
+    logging.error('Failed to download: %s, error=%s', gdrive_fpath, cp.stderr.read())
+    return False
 
 
 def gdrive_upload_file(local_fpath, gdrive_dir, rclone_config):
     logging.info('Uploading path: ' + local_fpath + ' to: ' + gdrive_dir)
     target_dir = rclone_config + ':' + gdrive_dir
-    cp = subprocess.run(['rclone', 'copy', '-P', '--config', 'env/rclone.conf',
-                         local_fpath,
-                         target_dir],
-                        capture_output=True, text=True)
-    if cp.returncode != 0:
-        logging.error('Failed to upload to: ' + gdrive_dir + ' error: ' + str(cp.stderr))
-        return False
-    return True
+    cp = subprocess.Popen(['rclone', 'copy', '-P', '--config', 'env/rclone.conf', local_fpath, target_dir],
+                          stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE,
+                          encoding='utf8')
+    _print_process_stdout(cp)
+    if cp.returncode == 0:
+        return True
+
+    logging.error('Failed to upload dir=%s, error=%s', gdrive_dir, cp.stderr.read())
+    return False
 
 
 def load_session_info(result_dir, gdrive_result_dir, rclone_config):

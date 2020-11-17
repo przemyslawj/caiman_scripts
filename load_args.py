@@ -26,7 +26,7 @@ rclone_config = get_config_param('rcloneConfig')
 src_path = get_config_param('sourceDirectory')
 local_rootdir = get_config_param('localTempDirectory')
 downsample_subpath = get_config_param('downsampleSubpath')
-upload_path = os.path.join(local_rootdir, downsample_subpath)
+upload_path = get_config_param('uploadDirectory')
 local_miniscope_path = os.path.join(local_rootdir, downsample_subpath)
 
 ## Run related needs to be in the environ
@@ -38,4 +38,3 @@ caiman_result_dir = os.path.join(local_miniscope_path, experiment_title, experim
 
 doPwRigid = True
 miniscope_v4 = True
-
