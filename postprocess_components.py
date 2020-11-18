@@ -1,5 +1,5 @@
 # Filters components based on the defined quality parameters and registers the components across sessions
-from caiman.base.rois import register_multisession, register_ROIs, com
+from caiman.base.rois import register_multisession
 import logging
 import numpy as np
 import subprocess
@@ -11,8 +11,8 @@ from load_args import *
 
 logging.basicConfig(level=logging.INFO)
 
-# Choose sessions
-exp_titles = ['habituation', 'learning']
+# Relative to root paths to dated directories under which caiman results are stored
+caiman_parent_paths = ['habituation', 'learning']
 
 vca1_neuron_sizes = {
     'max': 250,
@@ -59,7 +59,7 @@ def filter_components(cnm_obj, components_quality_params, registration_params, e
 
 # Load session objects
 session_objs = []
-for exp_title in exp_titles:
+for exp_title in caiman_parent_paths:
     gdrive_exp_dir = os.path.join(downsample_subpath, exp_title)
     cp = subprocess.run(['rclone', 'lsf', '--config', 'env/rclone.conf', rclone_config + ':' + gdrive_exp_dir],
                         capture_output=True, text=True)

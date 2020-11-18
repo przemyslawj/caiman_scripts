@@ -15,11 +15,6 @@
     "time"
   ],
   "experimentNames": ["trial", "homecage", "beforetest", "aftertest", "novel_box"],
-  "concatSessions": ["animalId", "date"],
-  "filterSessions": {
-    "animalId": ["O-TR", "R-TR"],
-    "date": ["2020_10_20"]
-  },
   "vidPrefix": "",
   "ncores": 4
 }
