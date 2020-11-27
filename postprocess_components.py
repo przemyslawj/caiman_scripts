@@ -16,19 +16,20 @@ caiman_parent_paths = ['habituation', 'learning']
 
 vca1_neuron_sizes = {
     'max': 250,
-    'min': 30
+    'min': 40
 }
 dca1_neuron_sizes = {
-    'max': 160,
-    'min': 20
+    'max': 140,
+    'min': 10
 }
-neuron_size_params = vca1_neuron_sizes
+neuron_size_params = dca1_neuron_sizes
 
 components_quality_params = {
     'use_cnn': False,
     'rval_thr': 0.8,
     'rval_lowest': -1.0,
-    'min_SNR': 6,
+    #'min_SNR': 6,
+    'min_SNR': 3,
     'SNR_lowest': 2.5,
 }
 
@@ -60,7 +61,7 @@ def filter_components(cnm_obj, components_quality_params, registration_params, e
 # Load session objects
 session_objs = []
 for exp_title in caiman_parent_paths:
-    gdrive_exp_dir = os.path.join(downsample_subpath, exp_title)
+    gdrive_exp_dir = os.path.join(upload_path, exp_title)
     cp = subprocess.run(['rclone', 'lsf', '--config', 'env/rclone.conf', rclone_config + ':' + gdrive_exp_dir],
                         capture_output=True, text=True)
     exp_dates = [x.strip() for x in cp.stdout.split('\n') if len(x.strip()) > 0]
@@ -116,7 +117,8 @@ spatial_union, assignments, mappings = register_multisession(A=spatial_comps,
                                                              templates=templates,
                                                              thresh_cost=registration_params['thresh_cost'],
                                                              max_dist=registration_params['max_dist'],
-                                                             max_thr=registration_params['max_thr'])
+                                                             max_thr=registration_params['max_thr'],
+                                                             use_opt_flow=True)
 
 
 # Save updated cnm_obj and upload to drive

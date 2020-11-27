@@ -18,10 +18,9 @@ exp_title_dates = {
     #'habituation': ['2019-08-29'],
     #'learning': ['2019-09-04', '2019-09-06']
     #'learning': ['2020-02-06', '2020-02-08', '2020-02-11']
-    'learning': ['2019-07-28', '2019-07-30', '2019-08-01']
+    #'habituation': ['2020_10_08'],
+    'learning': ['2020_10_24', '2020_10_22']
 }
-
-animal = 'B-BL'
 
 filteredComponents = True
 max_thr = 0.45
@@ -36,11 +35,12 @@ for exp_title in exp_title_dates.keys():
     exp_dates = exp_title_dates[exp_title]
     for exp_date in exp_dates:
         local_dated_dir = os.path.join(local_rootdir, downsample_subpath, exp_title, exp_date)
-        gdrive_result_dir = os.path.join(upload_path, exp_title, exp_date, 'caiman', animal)
+        gdrive_result_dir = os.path.join(upload_path, exp_title, exp_date, 'caiman', animal_name)
 
         analysis_results_fname = 'analysis_results.hdf5'
         if filteredComponents:
             analysis_results_fname = os.path.join('filtered', 'analysis_results_filtered.hdf5')
+        caiman_result_dir = os.path.join(local_miniscope_path, exp_title, exp_date, 'caiman', animal_name)
         h5fpath = os.path.join(caiman_result_dir, analysis_results_fname)
         if not os.path.isfile(h5fpath):
             gdrive_download_file(os.path.join(gdrive_result_dir, analysis_results_fname),
@@ -81,8 +81,7 @@ spatial_union, assignments, mappings = register_multisession(A=spatial, dims=dim
 
 pairs = list(itertools.combinations(range(len(templates)), 2))
 for pair in pairs:
-    plt.figure()
-    plt.suptitle(cnm_titles[pair[0]] + ' vs ' + cnm_titles[pair[1]])
+    #plt.figure()
     match_1, match_2, non_1, non_, perf_, A2 = register_ROIs(spatial[pair[0]], spatial[pair[1]], dims,
                                                             template1=templates[pair[0]],
                                                             template2=templates[pair[1]],
@@ -91,6 +90,7 @@ for pair in pairs:
                                                             thresh_cost=thresh_cost,
                                                             max_dist=max_dist,
                                                             Cn=templates[pair[0]])
+    plt.suptitle(cnm_titles[pair[0]] + ' vs ' + cnm_titles[pair[1]])
 
     # Calculate centroid distances for the matched cells
     cm_1 = com(spatial[pair[0]], dims[0], dims[1])[match_1]

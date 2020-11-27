@@ -71,7 +71,7 @@ def save_matlab(cnm, session_info, target_dir, images, mstime, camNumber, extraF
         # 'dirName': path_to_analyze,
         'Experiment': session_info['animal_name'],
         'numFiles': 1,
-        'framesNum': len(RawTraces[1]),
+        'framesNum': len(RawTraces[0]),
         'maxFramesPerFile': 1000,
         'height': cnm.dims[0],
         'width': cnm.dims[1],

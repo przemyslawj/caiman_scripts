@@ -2,7 +2,7 @@
   "sourceDirectory": "/media/prez/My Passport/cheeseboard/2020-10",
   "rcloneConfig": "local_drive",
   "rcloneConfigFile": "env/rclone.conf",
-  "localTempDirectory": "/home/prez/neurodata/",
+  "localTempDirectory": "/mnt/DATA/Prez",
   "downsample": 2,
   "downsampleSubpath": "cheeseboard-down/down_2/2020-10",
   "uploadDirectory": "/media/prez/My Passport/cheeseboard-down/down_2/2020-10",
