@@ -16,5 +16,6 @@
   ],
   "experimentNames": ["trial", "homecage", "beforetest", "aftertest", "novel_box"],
   "vidPrefix": "",
-  "ncores": 4
+  "ncores": 4,
+  "caimanSrcDatadir": "/mnt/DATA/Prez/code/miniscope_repos/CaImAn"
 }

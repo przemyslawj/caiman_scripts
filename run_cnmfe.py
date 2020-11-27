@@ -158,14 +158,15 @@ logging.info(' ***** ')
 logging.info('Number of total components: %d', len(cnm.estimates.C))
 cnm.params.set('quality', {'min_SNR': min_SNR,
                            'rval_thr': r_values_min,
-                           'use_cnn': False})
+                           'use_cnn': True})
 cnm.estimates.evaluate_components(images, cnm.params, dview=dview)
+cnm.estimates.Cn = cn_filter
 
 logging.info('Number of accepted components: %d', len(cnm.estimates.idx_components))
 
 # ## Plot results
 neuronsToPlot = 20
-RawTraces = cnm.estimates.C
+RawTraces = cnm.estimates.C[cnm.estimates.idx_components,:]
 maxRawTraces = np.amax(RawTraces)
 
 plt.figure(figsize=(30, 15))
@@ -178,13 +179,13 @@ plt.imshow(pnr)
 plt.colorbar()
 plt.title('PNR')
 plt.subplot(3, 2, 5)
-plt.imshow(np.amax(results_format.readSFP(cnm), axis=2))
+plt.imshow(np.amax(results_format.readSFP(cnm, True), axis=2))
 plt.colorbar()
 plt.title('Spatial footprints')
 
 plt.subplot(3, 2, 2)
 plt.figure
-plt.title('Example traces (first 50 cells)')
+plt.title('Example traces (first 20 cells)')
 plot_gain = 10  # To change the value gain of traces
 plot_maxlen_sec = 200
 numNeurons = cnm.estimates.A.shape[1]
@@ -205,8 +206,8 @@ else:
 
 plt.subplot(3, 2, 4)
 plt.figure
-plt.title('Deconvolved traces (first 50 cells)')
-DeconvTraces = cnm.estimates.S
+plt.title('Deconvolved traces (first 20 cells)')
+DeconvTraces = cnm.estimates.S[cnm.estimates.idx_components, :]
 plot_gain = 20  # To change the value gain of traces
 if numNeurons >= neuronsToPlot:
     for i in range(neuronsToPlot):
@@ -225,7 +226,7 @@ else:
 
 # Save summary figure
 plt.savefig(caiman_result_dir + '/' + 'summary_figure.svg', edgecolor='w', format='svg', transparent=True)
-
+plt.close()
 """# Save the results in HDF5 format"""
 
 save_hdf5 = True

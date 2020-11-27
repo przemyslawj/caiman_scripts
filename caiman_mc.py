@@ -137,6 +137,7 @@ def plot_stats(session_fpath, mc, shifts_rig):
     name_parts = session_fpath.split(os.path.sep)
     plt_fname = '_'.join([name_parts[-4], name_parts[-3], name_parts[-2], name_parts[-1], 'mc_summary.svg'])
     plt.savefig(caiman_result_dir + '/' + plt_fname, edgecolor='w', format='svg', transparent=True)
+    plt.close()
 
 
 def mc_vids(vids_fpath, mc_rigid_template):

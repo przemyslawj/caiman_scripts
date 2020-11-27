@@ -11,8 +11,10 @@ def find_centroids(SFP):
     return [center_of_mass(SFP[:, :, ii]) for ii in range(SFP.shape[2])]
 
 
-def readSFP(cnm):
+def readSFP(cnm, filter_components=False):
     SFP = cnm.estimates.A
+    if filter_components:
+        SFP = SFP[:, cnm.estimates.idx_components]
     SFP_dims = list(cnm.dims)
     SFP_dims.append(SFP.shape[1])
     SFP = np.reshape(SFP.toarray(), SFP_dims, order='F')

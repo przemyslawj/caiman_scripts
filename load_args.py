@@ -28,6 +28,7 @@ local_rootdir = get_config_param('localTempDirectory')
 downsample_subpath = get_config_param('downsampleSubpath')
 upload_path = get_config_param('uploadDirectory')
 local_miniscope_path = os.path.join(local_rootdir, downsample_subpath)
+caiman_src_datadir = get_config_param('caimanSrcDatadir')
 
 ## Run related needs to be in the environ
 experiment_title = get_config_param('EXP_TITLE', 'missing_exp_title')

@@ -1,15 +1,20 @@
 # Filters components based on the defined quality parameters and registers the components across sessions
 from caiman.base.rois import register_multisession
+from caiman.components_evaluation import evaluate_components_CNN
+from caiman.utils.visualization import plot_contours
+from matplotlib import pyplot as plt
 import logging
 import numpy as np
 import subprocess
 
-from results_format import save_matlab
+from results_format import save_matlab, readSFP
 from miniscope_file import gdrive_download_file, gdrive_upload_file, load_session_info, load_hdf5_result, load_msresult
 from load_args import *
 
 
 logging.basicConfig(level=logging.INFO)
+
+upload_results = True
 
 # Relative to root paths to dated directories under which caiman results are stored
 caiman_parent_paths = ['habituation', 'learning']
@@ -22,15 +27,17 @@ dca1_neuron_sizes = {
     'max': 140,
     'min': 10
 }
-neuron_size_params = dca1_neuron_sizes
+neuron_size_params = vca1_neuron_sizes
 
 components_quality_params = {
-    'use_cnn': False,
+    'use_cnn': True,
     'rval_thr': 0.8,
     'rval_lowest': -1.0,
-    #'min_SNR': 6,
-    'min_SNR': 3,
+    'min_SNR': 6,
+    #'min_SNR': 3,
     'SNR_lowest': 2.5,
+    'min_cnn_thr': 0.99,
+    'cnn_lowest': 0.1
 }
 
 registration_params = {
@@ -47,6 +54,12 @@ def filter_components(cnm_obj, components_quality_params, registration_params, e
     logging.info('%s: filtered %d neurons based on the size', exp_date, len(cnm_obj.estimates.idx_components_bad))
     cnm_obj.estimates.accepted_list = cnm_obj.estimates.idx_components
     empty_images = np.zeros((1,) + cnm_obj.dims)
+    if components_quality_params['use_cnn'] and (
+            not hasattr(cnm_obj.estimates, 'cnn_preds') or len(cnm_obj.estimates.cnn_preds) == 0):
+        predictions, final_crops = evaluate_components_CNN(
+            cnm_obj.estimates.A, cnm_obj.dims, cnm_obj.params.init['gSig'],
+            model_name=os.path.join(caiman_src_datadir, 'model', 'cnn_model'))
+        cnm_obj.estimates.cnn_preds = predictions[:, 1]
     cnm_obj.estimates.filter_components(empty_images, cnm_obj.params,
                                         new_dict=components_quality_params,
                                         select_mode='Accepted')
@@ -133,13 +146,22 @@ for sess_i, session in enumerate(session_objs):
     gdrive_upload_dir = os.path.join(
         session['result_dir'][session['result_dir'].find(downsample_subpath):],
         'filtered')
-    gdrive_upload_file(cnm_obj_fpath, gdrive_upload_dir, rclone_config)
+    if upload_results:
+        gdrive_upload_file(cnm_obj_fpath, gdrive_upload_dir, rclone_config)
+
+    # Spatial footprint of filtered components
+    plt.figure()
+    plot_contours(cnm_obj.estimates.A, np.zeros(cnm_obj.dims), thr=0.9)
+    plt.imshow(np.amax(readSFP(cnm_obj, False), axis=2))
+    plt.savefig(os.path.join(session['result_dir'], 'filtered', 'sfp.svg'), edgecolor='w',
+                format='svg', transparent=False)
 
     msresult = load_msresult(session['result_dir'], session['gdrive_result_dir'], rclone_config)
     msobj = msresult['ms'][0, 0]
     ms_fpath, sfp_fpath = save_matlab(cnm_obj, session_info, os.path.join(session['result_dir'], 'filtered'), [],
                                       msobj['time'], msobj['camNumber'],
                                       extraFields={'cellId': mappings[sess_i]})
-    gdrive_upload_file(ms_fpath, gdrive_upload_dir, rclone_config)
-    gdrive_upload_file(sfp_fpath, gdrive_upload_dir, rclone_config)
+    if upload_results:
+        gdrive_upload_file(ms_fpath, gdrive_upload_dir, rclone_config)
+        gdrive_upload_file(sfp_fpath, gdrive_upload_dir, rclone_config)
 
