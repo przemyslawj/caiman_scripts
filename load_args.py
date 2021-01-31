@@ -8,10 +8,10 @@ with open('pipeline_setup.json') as json_file:
 
 
 def get_config_param(arg, default_val=None):
-    if arg in pipeline_setup:
-        return pipeline_setup[arg]
     if arg in os.environ:
         return os.environ[arg]
+    if arg in pipeline_setup:
+        return pipeline_setup[arg]
     if default_val is None:
         raise ValueError('No value configured for param=' + arg)
     return default_val

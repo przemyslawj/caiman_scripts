@@ -1,6 +1,7 @@
 import itertools
 import logging
 import numpy as np
+import pandas as pd
 
 from caiman.base.rois import register_multisession, register_ROIs, com
 from caiman.source_extraction.cnmf.cnmf import load_CNMF
@@ -14,13 +15,14 @@ logging.basicConfig(level=logging.INFO)
 # Choose sessions
 exp_title_dates = {
     #'habituation': ['2019-08-27', '2019-08-28', '2019-08-29'],
-    #'learning': ['2019-08-30', '2019-08-31', '2019-09-01']
+    'learning': ['2019-07-28', '2019-07-30']
     #'habituation': ['2019-08-29'],
-    #'learning': ['2019-09-04', '2019-09-06']
+    #'learning': ['2019-09-04', '2019-09-06', '2019-09-08']
     #'learning': ['2020-02-06', '2020-02-08', '2020-02-11']
     #'habituation': ['2020_10_08'],
-    'learning': ['2020_10_24', '2020_10_22']
+    #'learning': ['2020_10_24', '2020_10_22', '2020_10_20', '2020_10_18']
 }
+export_stats = False
 
 filteredComponents = True
 max_thr = 0.45
@@ -79,18 +81,86 @@ spatial_union, assignments, mappings = register_multisession(A=spatial, dims=dim
 #         else:
 #             traces[i,j] = cnm_list[j].estimates.C[int(assignments[i,j])]
 
+def my_roi_image(A1,
+                 A2,
+                 dims,
+                 matched_ROIs1,
+                 matched_ROIs2,
+                 non_matched1,
+                 non_matched2,
+                 max_thr):
+    if 'ndarray' not in str(type(A1)):
+        A1 = A1.toarray()
+    if 'ndarray' not in str(type(A2)):
+        A2 = A2.toarray()
+
+    def array2img(A):
+        A_thr = np.stack([a * (a > max_thr * a.max()) for a in A.T]).T
+        lp, hp = np.nanpercentile(A_thr.sum(1), [5, 99])
+        return (np.reshape(A_thr.sum(1), dims, order='F') - lp) / (hp - lp)
+
+    plt.figure(figsize=(20, 10))
+    plt.subplot(1, 3, 1)
+    img1 = array2img(A1)
+    img2 = array2img(A2)
+    zero_img = np.zeros_like(img1)
+    plt.imshow(np.dstack((img1, img2, zero_img)))
+    plt.title('All')
+
+    plt.subplot(1, 3, 2)
+    img1 = array2img(A1[:, matched_ROIs1])
+    img2 = array2img(A2[:, matched_ROIs2])
+    plt.imshow(np.dstack((img1, img2, zero_img)))
+    plt.imshow(np.dstack((img1, img2, zero_img)))
+    plt.title('Matched')
+
+    plt.subplot(1, 3, 3)
+    img1 = array2img(A1[:, non_matched1])
+    img2 = array2img(A2[:, non_matched2])
+    plt.imshow(np.dstack((img1, img2, zero_img)))
+    plt.imshow(np.dstack((img1, img2, zero_img)))
+    plt.title('Not matched')
+
+
+def footprint_cors(A1, A2, centroids, window_px=10):
+    if 'ndarray' not in str(type(A1)):
+        A1 = A1.toarray()
+    if 'ndarray' not in str(type(A2)):
+        A2 = A2.toarray()
+
+    def crop_vector(A, centroid):
+        a = np.reshape(A, dims, order='F')
+        centroid = [int(x) for x in centroid]
+
+        a_cropped = a[max(0, centroid[0] - window_px):min(centroid[0] + window_px, dims[0]),
+                      max(0, centroid[1] - window_px):min(centroid[1] + window_px, dims[1])]
+        return np.reshape(a_cropped, (a_cropped.shape[0] * a_cropped.shape[1],), order='F')
+
+    cors = np.zeros((A1.shape[1]), dtype='float32')
+    for cell_i in range(A1.shape[1]):
+        #a = crop_vector(A1[:, cell_i], centroids[cell_i, :])
+        #v = crop_vector(A2[:, cell_i], centroids[cell_i, :])
+        #cors[cell_i] = np.correlate(a, v)
+        cors[cell_i] = np.correlate(A1[:, cell_i], A2[:, cell_i])
+    return cors
+
+
 pairs = list(itertools.combinations(range(len(templates)), 2))
+
+stats = pd.DataFrame()
+
 for pair in pairs:
-    #plt.figure()
-    match_1, match_2, non_1, non_, perf_, A2 = register_ROIs(spatial[pair[0]], spatial[pair[1]], dims,
+    match_1, match_2, non_1, non_2, perf_, A2 = register_ROIs(spatial[pair[0]], spatial[pair[1]], dims,
                                                             template1=templates[pair[0]],
                                                             template2=templates[pair[1]],
-                                                            plot_results=True,
+                                                            plot_results=False,
                                                             max_thr=max_thr,
                                                             thresh_cost=thresh_cost,
                                                             max_dist=max_dist,
                                                             Cn=templates[pair[0]])
     plt.suptitle(cnm_titles[pair[0]] + ' vs ' + cnm_titles[pair[1]])
+
+    my_roi_image(spatial[pair[0]].toarray(), A2, dims, match_1, match_2, non_1, non_2, max_thr)
 
     # Calculate centroid distances for the matched cells
     cm_1 = com(spatial[pair[0]], dims[0], dims[1])[match_1]
@@ -98,8 +168,22 @@ for pair in pairs:
     cm_2_registered = com(A2, dims[0], dims[1])[match_2]
     distances = [0] * len(cm_1)
     distances_registered = [0] * len(cm_1)
+    matched_cors = footprint_cors(spatial[pair[0]][:, match_1],
+                                  A2[:, match_2],
+                                  cm_1)
     for i, centroid1, centroid2, centroid2_reg in zip(range(len(cm_1)), cm_1, cm_2, cm_2_registered):
         distances[i] = np.linalg.norm(centroid1 - centroid2)
         distances_registered[i] = np.linalg.norm(centroid1 - centroid2_reg)
     print('Median distance=' + str(np.median(distances)))
     print('Median distance registered=' + str(np.median(distances_registered)))
+    print('Median correlation of matches=' + str(np.median(matched_cors)))
+    trial_stats = pd.DataFrame()
+    trial_stats['reg_dist_px'] = distances_registered
+    trial_stats['matched_cors'] = matched_cors
+    trial_stats['exp_day1'] = cnm_titles[pair[0]]
+    trial_stats['exp_day2'] = cnm_titles[pair[1]]
+    stats = stats.append(trial_stats)
+
+
+if export_stats:
+    stats.to_csv(os.path.join('/home/prez/tmp/cheeseboard/registration_stats', animal_name + '.csv'))
