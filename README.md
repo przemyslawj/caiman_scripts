@@ -110,9 +110,9 @@ animal subject, the default params are used which work fine for dCA1.
 1.1 Update variables in `vars_setup.sh`
 1.2 Run the pipeline:
 ```
-python pipeline.sh E-BL E-TL --dates 2019-08-27 --exp_title habituation
+python pipeline.py --animals E-BL E-TL --dates 2019-08-27 --exp_title habituation
 ```
-For help run `python pipeline.sh -h`
+For help run `python pipeline.py -h`
 
 The pipeline creates the h5 files with the extracted signal in subdirectory
 `caiman` and uploads the files to external storage.

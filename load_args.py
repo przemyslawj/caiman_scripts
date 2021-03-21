@@ -38,4 +38,4 @@ caiman_result_dir = os.path.join(local_miniscope_path, experiment_title, experim
 
 
 doPwRigid = True
-miniscope_v4 = True
+is_v4_path = get_config_param('isV4Path', 0) == 1

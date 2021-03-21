@@ -52,7 +52,7 @@ def sort_mscam(vid_prefix: str):
 
 
 def get_miniscope_vids_path(session_fpath: str):
-    if miniscope_v4:
+    if is_v4_path:
         return os.path.join(session_fpath, 'Miniscope')
     return session_fpath
 
