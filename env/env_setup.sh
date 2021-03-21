@@ -5,7 +5,7 @@ sudo dpkg -i rclone-v1.49.3-linux-amd64.deb
 conda install -c anaconda cython
 conda create -n caiman -c conda-forge caiman
 #conda activate caiman && pip install moviepy tifffile ipyparallel peakutils moviepy sk-video
-conda install -n caiman -c conda-forge moviepy tifffile ipyparallel peakutils moviepy sk-video tqdm pyyaml ruptures
+conda install -n caiman -c conda-forge moviepy tifffile ipyparallel peakutils moviepy sk-video tqdm pyyaml ruptures bokeh holoviews
 #conda activate caiman && conda install -c conda-forge opencv=3.4.4
 
 mkdir src && cd src && git clone --depth 1 https://github.com/przemyslawj/caiman_scripts.git
